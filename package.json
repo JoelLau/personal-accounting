@@ -1,0 +1,10 @@
+{
+  "license": "MIT",
+  "scripts": {
+    "nx": "nx"
+  },
+  "devDependencies": {
+    "nx": "20.8.4"
+  }
+}
+
