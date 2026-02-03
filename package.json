@@ -4,7 +4,8 @@
     "nx": "nx",
     "lint": "nx run-many --all --target=lint --all --parallel",
     "start": "nx run-many --all --target=serve --all --parallel",
-    "test": "nx run-many --all --target=test --all --parallel"
+    "test": "nx run-many --all --target=test --all --parallel",
+    "tidy": "nx run-many --all --target=tidy --all --parallel"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "~19.2.0",
