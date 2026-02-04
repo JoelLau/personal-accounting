@@ -13,7 +13,6 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-//go:generate go tool oapi-codegen -config oapi_codegen.yaml ../../libs/shared/api-spec/openapi.yaml
 func main() {
 	ctx := context.Background()
 	cfg := config.Init(ctx)

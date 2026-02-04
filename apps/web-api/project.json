@@ -7,7 +7,7 @@
   "targets": {
     "build": {
       "executor": "@nx-go/nx-go:build",
-      "dependsOn": ["generate-api"],
+      "dependsOn": ["db-query-lib", "api-spec"],
       "options": {
         "main": "{projectRoot}/main.go"
       }
@@ -24,12 +24,33 @@
     "lint": {
       "executor": "@nx-go/nx-go:lint"
     },
-    "generate-api": {
-      "executor": "@nx-go/nx-go:generate",
-      "cwd": "apps/web-api"
+    "api-spec": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen --config=oapi_codegen.yaml ../../libs/shared/api-spec/openapi.yaml",
+        "cwd": "{projectRoot}"
+      },
+      "cwd": "{projectRoot}/internal/webapi/webapi.go"
+    },
+    "db-query-lib": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["migrate-up"],
+      "options": {
+        "command": "sqlc generate",
+        "cwd": "{projectRoot}"
+      },
+      "outputs": ["{projectRoot}/internal/db/dbgen/"]
     },
     "tidy": {
       "executor": "@nx-go/nx-go:tidy"
+    },
+    "migrate-up": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "migrate -path ./internal/db/migrations/ -database $DB_URL up",
+        "cwd": "{projectRoot}"
+      },
+      "outputs": ["{projectRoot}/internal/db/dbgen/"]
     }
   }
 }
