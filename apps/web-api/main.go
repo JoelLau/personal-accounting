@@ -1,31 +1,41 @@
 package main
 
 import (
+	"apps/web-api/internal/config"
+	"apps/web-api/internal/server"
+	"apps/web-api/internal/webapi"
 	"context"
 	"errors"
 	"log/slog"
 	"net/http"
-	"os"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
+//go:generate go tool oapi-codegen -config oapi_codegen.yaml ../../libs/shared/api-spec/openapi.yaml
 func main() {
 	ctx := context.Background()
-	s := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{AddSource: true, Level: slog.LevelDebug}))
-	slog.SetDefault(s)
+	cfg := config.Init(ctx)
 
-	addr := ":8080" // TODO: move this to dotenv / config file
-
-	r := chi.NewRouter()
-	r.Use(middleware.Logger)
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("welcome"))
+	myStrictServer := server.NewServer()
+	strictHandler := webapi.NewStrictHandler(myStrictServer, nil)
+	handler := webapi.HandlerWithOptions(strictHandler, webapi.ChiServerOptions{
+		BaseRouter: chi.NewRouter(),
+		Middlewares: []webapi.MiddlewareFunc{
+			middleware.Logger,
+			middleware.Recoverer,
+		},
 	})
 
-	err := http.ListenAndServe(addr, r)
+	srv := &http.Server{
+		Handler: handler,
+		Addr:    cfg.Address,
+	}
+
+	err := srv.ListenAndServe()
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		slog.ErrorContext(ctx, "unexpected server shutdown", slog.Any("error", err))
+		return
 	}
 }

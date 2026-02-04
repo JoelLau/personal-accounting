@@ -7,6 +7,7 @@
   "targets": {
     "build": {
       "executor": "@nx-go/nx-go:build",
+      "dependsOn": ["generate-api"],
       "options": {
         "main": "{projectRoot}/main.go"
       }
@@ -22,6 +23,10 @@
     },
     "lint": {
       "executor": "@nx-go/nx-go:lint"
+    },
+    "generate-api": {
+      "executor": "@nx-go/nx-go:generate",
+      "cwd": "apps/web-api"
     },
     "tidy": {
       "executor": "@nx-go/nx-go:tidy"

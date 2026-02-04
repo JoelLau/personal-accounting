@@ -2,6 +2,8 @@
   "license": "MIT",
   "scripts": {
     "nx": "nx",
+    "build": "nx run-many --all --target=build --all --parallel",
+    "generate": "nx run-many --all --target=generate--all --parallel",
     "lint": "nx run-many --all --target=lint --all --parallel",
     "start": "nx run-many --all --target=serve --all --parallel",
     "test": "nx run-many --all --target=test --all --parallel",
