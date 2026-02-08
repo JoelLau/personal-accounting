@@ -26,8 +26,44 @@ type AccountStatus struct {
 	Warnings   *[]string `json:"warnings,omitempty"`
 }
 
-// Entry Double-entry accounting entry - debit / credit
+// Entry Double-entry accounting ledger entry
 type Entry struct {
+	CreditAmount     string `json:"credit_amount"`
+	DebitAmount      string `json:"debit_amount"`
+	Description      string `json:"description"`
+	Id               string `json:"id"`
+	LedgerAccountsId string `json:"ledger_accounts_id"`
+	PostingsId       string `json:"postings_id"`
+	SystemNotes      string `json:"system_notes"`
+}
+
+// LedgerAccount Double-entry accounting charter of accounts
+type LedgerAccount struct {
+	Description   string  `json:"description"`
+	Id            string  `json:"id"`
+	Name          string  `json:"name"`
+	ParentId      string  `json:"parent_id"`
+	QualifiedName *string `json:"qualified_name,omitempty"`
+}
+
+// Posting Double-entry accounting ledger posting (journal entry)
+type Posting struct {
+	Description  string             `json:"description"`
+	Id           string             `json:"id"`
+	SystemNotes  string             `json:"system_notes"`
+	TransactedAt openapi_types.Date `json:"transacted_at"`
+}
+
+// Transaction Double-entry accounting transaction
+type Transaction struct {
+	Date        openapi_types.Date  `json:"date"`
+	Description string              `json:"description"`
+	Entries     []TransactionEntry  `json:"entries"`
+	Id          *openapi_types.UUID `json:"id,omitempty"`
+}
+
+// TransactionEntry Double-entry accounting entry - debit / credit
+type TransactionEntry struct {
 	// CreditAmount ...
 	CreditAmount string `json:"credit_amount"`
 
@@ -36,14 +72,6 @@ type Entry struct {
 
 	// TransactionId transaction id
 	TransactionId string `json:"transaction_id"`
-}
-
-// Transaction Double-entry accounting transaction
-type Transaction struct {
-	Date        openapi_types.Date  `json:"date"`
-	Description string              `json:"description"`
-	Entries     []Entry             `json:"entries"`
-	Id          *openapi_types.UUID `json:"id,omitempty"`
 }
 
 // GetApiV1AccountingTransactionsParams defines parameters for GetApiV1AccountingTransactions.
@@ -59,7 +87,7 @@ type GetApiV1AccountingTransactionsParams struct {
 type PutApiV1AccountingTransactionsTransactionIdJSONBody struct {
 	Date        openapi_types.Date `json:"date"`
 	Description string             `json:"description"`
-	Entries     []Entry            `json:"entries"`
+	Entries     []TransactionEntry `json:"entries"`
 }
 
 // PutApiV1AccountingTransactionsTransactionIdJSONRequestBody defines body for PutApiV1AccountingTransactionsTransactionId for application/json ContentType.
@@ -67,9 +95,24 @@ type PutApiV1AccountingTransactionsTransactionIdJSONRequestBody PutApiV1Accounti
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+
+	// (GET /api/livez)
+	GetApiLivez(w http.ResponseWriter, r *http.Request)
+
+	// (GET /api/readyz)
+	GetApiReadyz(w http.ResponseWriter, r *http.Request)
 	// Balance and health check
 	// (GET /api/v1/accounting/accounts/info)
 	GetApiV1AccountingAccountsInfo(w http.ResponseWriter, r *http.Request)
+	// List all entriee
+	// (GET /api/v1/accounting/entries)
+	GetApiV1AccountingEntries(w http.ResponseWriter, r *http.Request)
+	// List all ledger accounts
+	// (GET /api/v1/accounting/ledger_accounts)
+	GetApiV1AccountingLedgerAccounts(w http.ResponseWriter, r *http.Request)
+	// List all postings
+	// (GET /api/v1/accounting/postings)
+	GetApiV1AccountingPostings(w http.ResponseWriter, r *http.Request)
 	// List all transactions
 	// (GET /api/v1/accounting/transactions)
 	GetApiV1AccountingTransactions(w http.ResponseWriter, r *http.Request, params GetApiV1AccountingTransactionsParams)
@@ -79,21 +122,43 @@ type ServerInterface interface {
 	// Update or finalize a generated transaction
 	// (PUT /api/v1/accounting/transactions/{transaction_id})
 	PutApiV1AccountingTransactionsTransactionId(w http.ResponseWriter, r *http.Request, transactionId openapi_types.UUID)
-
-	// (GET /livez)
-	GetLivez(w http.ResponseWriter, r *http.Request)
-
-	// (GET /readyz)
-	GetReadyz(w http.ResponseWriter, r *http.Request)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
 
 type Unimplemented struct{}
 
+// (GET /api/livez)
+func (_ Unimplemented) GetApiLivez(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (GET /api/readyz)
+func (_ Unimplemented) GetApiReadyz(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // Balance and health check
 // (GET /api/v1/accounting/accounts/info)
 func (_ Unimplemented) GetApiV1AccountingAccountsInfo(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// List all entriee
+// (GET /api/v1/accounting/entries)
+func (_ Unimplemented) GetApiV1AccountingEntries(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// List all ledger accounts
+// (GET /api/v1/accounting/ledger_accounts)
+func (_ Unimplemented) GetApiV1AccountingLedgerAccounts(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// List all postings
+// (GET /api/v1/accounting/postings)
+func (_ Unimplemented) GetApiV1AccountingPostings(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -115,16 +180,6 @@ func (_ Unimplemented) PutApiV1AccountingTransactionsTransactionId(w http.Respon
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// (GET /livez)
-func (_ Unimplemented) GetLivez(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// (GET /readyz)
-func (_ Unimplemented) GetReadyz(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
 // ServerInterfaceWrapper converts contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler            ServerInterface
@@ -134,11 +189,81 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc func(http.Handler) http.Handler
 
+// GetApiLivez operation middleware
+func (siw *ServerInterfaceWrapper) GetApiLivez(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetApiLivez(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetApiReadyz operation middleware
+func (siw *ServerInterfaceWrapper) GetApiReadyz(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetApiReadyz(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetApiV1AccountingAccountsInfo operation middleware
 func (siw *ServerInterfaceWrapper) GetApiV1AccountingAccountsInfo(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetApiV1AccountingAccountsInfo(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetApiV1AccountingEntries operation middleware
+func (siw *ServerInterfaceWrapper) GetApiV1AccountingEntries(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetApiV1AccountingEntries(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetApiV1AccountingLedgerAccounts operation middleware
+func (siw *ServerInterfaceWrapper) GetApiV1AccountingLedgerAccounts(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetApiV1AccountingLedgerAccounts(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetApiV1AccountingPostings operation middleware
+func (siw *ServerInterfaceWrapper) GetApiV1AccountingPostings(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetApiV1AccountingPostings(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -213,34 +338,6 @@ func (siw *ServerInterfaceWrapper) PutApiV1AccountingTransactionsTransactionId(w
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PutApiV1AccountingTransactionsTransactionId(w, r, transactionId)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// GetLivez operation middleware
-func (siw *ServerInterfaceWrapper) GetLivez(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetLivez(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// GetReadyz operation middleware
-func (siw *ServerInterfaceWrapper) GetReadyz(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetReadyz(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -364,7 +461,22 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/livez", wrapper.GetApiLivez)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/readyz", wrapper.GetApiReadyz)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/accounting/accounts/info", wrapper.GetApiV1AccountingAccountsInfo)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/accounting/entries", wrapper.GetApiV1AccountingEntries)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/accounting/ledger_accounts", wrapper.GetApiV1AccountingLedgerAccounts)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/accounting/postings", wrapper.GetApiV1AccountingPostings)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/accounting/transactions", wrapper.GetApiV1AccountingTransactions)
@@ -375,14 +487,44 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	r.Group(func(r chi.Router) {
 		r.Put(options.BaseURL+"/api/v1/accounting/transactions/{transaction_id}", wrapper.PutApiV1AccountingTransactionsTransactionId)
 	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/livez", wrapper.GetLivez)
-	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/readyz", wrapper.GetReadyz)
-	})
 
 	return r
+}
+
+type GetApiLivezRequestObject struct {
+}
+
+type GetApiLivezResponseObject interface {
+	VisitGetApiLivezResponse(w http.ResponseWriter) error
+}
+
+type GetApiLivez200JSONResponse struct {
+	Data interface{} `json:"data,omitempty"`
+}
+
+func (response GetApiLivez200JSONResponse) VisitGetApiLivezResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetApiReadyzRequestObject struct {
+}
+
+type GetApiReadyzResponseObject interface {
+	VisitGetApiReadyzResponse(w http.ResponseWriter) error
+}
+
+type GetApiReadyz200JSONResponse struct {
+	Data interface{} `json:"data,omitempty"`
+}
+
+func (response GetApiReadyz200JSONResponse) VisitGetApiReadyzResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
 }
 
 type GetApiV1AccountingAccountsInfoRequestObject struct {
@@ -395,6 +537,60 @@ type GetApiV1AccountingAccountsInfoResponseObject interface {
 type GetApiV1AccountingAccountsInfo200JSONResponse []AccountStatus
 
 func (response GetApiV1AccountingAccountsInfo200JSONResponse) VisitGetApiV1AccountingAccountsInfoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetApiV1AccountingEntriesRequestObject struct {
+}
+
+type GetApiV1AccountingEntriesResponseObject interface {
+	VisitGetApiV1AccountingEntriesResponse(w http.ResponseWriter) error
+}
+
+type GetApiV1AccountingEntries200JSONResponse struct {
+	Data *[]Entry `json:"data,omitempty"`
+}
+
+func (response GetApiV1AccountingEntries200JSONResponse) VisitGetApiV1AccountingEntriesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetApiV1AccountingLedgerAccountsRequestObject struct {
+}
+
+type GetApiV1AccountingLedgerAccountsResponseObject interface {
+	VisitGetApiV1AccountingLedgerAccountsResponse(w http.ResponseWriter) error
+}
+
+type GetApiV1AccountingLedgerAccounts200JSONResponse struct {
+	Data *[]LedgerAccount `json:"data,omitempty"`
+}
+
+func (response GetApiV1AccountingLedgerAccounts200JSONResponse) VisitGetApiV1AccountingLedgerAccountsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetApiV1AccountingPostingsRequestObject struct {
+}
+
+type GetApiV1AccountingPostingsResponseObject interface {
+	VisitGetApiV1AccountingPostingsResponse(w http.ResponseWriter) error
+}
+
+type GetApiV1AccountingPostings200JSONResponse struct {
+	Data *[]Posting `json:"data,omitempty"`
+}
+
+func (response GetApiV1AccountingPostings200JSONResponse) VisitGetApiV1AccountingPostingsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
@@ -444,55 +640,34 @@ type PutApiV1AccountingTransactionsTransactionIdResponseObject interface {
 	VisitPutApiV1AccountingTransactionsTransactionIdResponse(w http.ResponseWriter) error
 }
 
-type PutApiV1AccountingTransactionsTransactionId204Response struct {
+type PutApiV1AccountingTransactionsTransactionId200Response struct {
 }
 
-func (response PutApiV1AccountingTransactionsTransactionId204Response) VisitPutApiV1AccountingTransactionsTransactionIdResponse(w http.ResponseWriter) error {
-	w.WriteHeader(204)
+func (response PutApiV1AccountingTransactionsTransactionId200Response) VisitPutApiV1AccountingTransactionsTransactionIdResponse(w http.ResponseWriter) error {
+	w.WriteHeader(200)
 	return nil
-}
-
-type GetLivezRequestObject struct {
-}
-
-type GetLivezResponseObject interface {
-	VisitGetLivezResponse(w http.ResponseWriter) error
-}
-
-type GetLivez200JSONResponse struct {
-	Data interface{} `json:"data,omitempty"`
-}
-
-func (response GetLivez200JSONResponse) VisitGetLivezResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type GetReadyzRequestObject struct {
-}
-
-type GetReadyzResponseObject interface {
-	VisitGetReadyzResponse(w http.ResponseWriter) error
-}
-
-type GetReadyz200JSONResponse struct {
-	Data interface{} `json:"data,omitempty"`
-}
-
-func (response GetReadyz200JSONResponse) VisitGetReadyzResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-
-	return json.NewEncoder(w).Encode(response)
 }
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+
+	// (GET /api/livez)
+	GetApiLivez(ctx context.Context, request GetApiLivezRequestObject) (GetApiLivezResponseObject, error)
+
+	// (GET /api/readyz)
+	GetApiReadyz(ctx context.Context, request GetApiReadyzRequestObject) (GetApiReadyzResponseObject, error)
 	// Balance and health check
 	// (GET /api/v1/accounting/accounts/info)
 	GetApiV1AccountingAccountsInfo(ctx context.Context, request GetApiV1AccountingAccountsInfoRequestObject) (GetApiV1AccountingAccountsInfoResponseObject, error)
+	// List all entriee
+	// (GET /api/v1/accounting/entries)
+	GetApiV1AccountingEntries(ctx context.Context, request GetApiV1AccountingEntriesRequestObject) (GetApiV1AccountingEntriesResponseObject, error)
+	// List all ledger accounts
+	// (GET /api/v1/accounting/ledger_accounts)
+	GetApiV1AccountingLedgerAccounts(ctx context.Context, request GetApiV1AccountingLedgerAccountsRequestObject) (GetApiV1AccountingLedgerAccountsResponseObject, error)
+	// List all postings
+	// (GET /api/v1/accounting/postings)
+	GetApiV1AccountingPostings(ctx context.Context, request GetApiV1AccountingPostingsRequestObject) (GetApiV1AccountingPostingsResponseObject, error)
 	// List all transactions
 	// (GET /api/v1/accounting/transactions)
 	GetApiV1AccountingTransactions(ctx context.Context, request GetApiV1AccountingTransactionsRequestObject) (GetApiV1AccountingTransactionsResponseObject, error)
@@ -502,12 +677,6 @@ type StrictServerInterface interface {
 	// Update or finalize a generated transaction
 	// (PUT /api/v1/accounting/transactions/{transaction_id})
 	PutApiV1AccountingTransactionsTransactionId(ctx context.Context, request PutApiV1AccountingTransactionsTransactionIdRequestObject) (PutApiV1AccountingTransactionsTransactionIdResponseObject, error)
-
-	// (GET /livez)
-	GetLivez(ctx context.Context, request GetLivezRequestObject) (GetLivezResponseObject, error)
-
-	// (GET /readyz)
-	GetReadyz(ctx context.Context, request GetReadyzRequestObject) (GetReadyzResponseObject, error)
 }
 
 type StrictHandlerFunc = strictnethttp.StrictHTTPHandlerFunc
@@ -539,6 +708,54 @@ type strictHandler struct {
 	options     StrictHTTPServerOptions
 }
 
+// GetApiLivez operation middleware
+func (sh *strictHandler) GetApiLivez(w http.ResponseWriter, r *http.Request) {
+	var request GetApiLivezRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetApiLivez(ctx, request.(GetApiLivezRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetApiLivez")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetApiLivezResponseObject); ok {
+		if err := validResponse.VisitGetApiLivezResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetApiReadyz operation middleware
+func (sh *strictHandler) GetApiReadyz(w http.ResponseWriter, r *http.Request) {
+	var request GetApiReadyzRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetApiReadyz(ctx, request.(GetApiReadyzRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetApiReadyz")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetApiReadyzResponseObject); ok {
+		if err := validResponse.VisitGetApiReadyzResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetApiV1AccountingAccountsInfo operation middleware
 func (sh *strictHandler) GetApiV1AccountingAccountsInfo(w http.ResponseWriter, r *http.Request) {
 	var request GetApiV1AccountingAccountsInfoRequestObject
@@ -556,6 +773,78 @@ func (sh *strictHandler) GetApiV1AccountingAccountsInfo(w http.ResponseWriter, r
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetApiV1AccountingAccountsInfoResponseObject); ok {
 		if err := validResponse.VisitGetApiV1AccountingAccountsInfoResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetApiV1AccountingEntries operation middleware
+func (sh *strictHandler) GetApiV1AccountingEntries(w http.ResponseWriter, r *http.Request) {
+	var request GetApiV1AccountingEntriesRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetApiV1AccountingEntries(ctx, request.(GetApiV1AccountingEntriesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetApiV1AccountingEntries")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetApiV1AccountingEntriesResponseObject); ok {
+		if err := validResponse.VisitGetApiV1AccountingEntriesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetApiV1AccountingLedgerAccounts operation middleware
+func (sh *strictHandler) GetApiV1AccountingLedgerAccounts(w http.ResponseWriter, r *http.Request) {
+	var request GetApiV1AccountingLedgerAccountsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetApiV1AccountingLedgerAccounts(ctx, request.(GetApiV1AccountingLedgerAccountsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetApiV1AccountingLedgerAccounts")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetApiV1AccountingLedgerAccountsResponseObject); ok {
+		if err := validResponse.VisitGetApiV1AccountingLedgerAccountsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetApiV1AccountingPostings operation middleware
+func (sh *strictHandler) GetApiV1AccountingPostings(w http.ResponseWriter, r *http.Request) {
+	var request GetApiV1AccountingPostingsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetApiV1AccountingPostings(ctx, request.(GetApiV1AccountingPostingsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetApiV1AccountingPostings")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetApiV1AccountingPostingsResponseObject); ok {
+		if err := validResponse.VisitGetApiV1AccountingPostingsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -639,54 +928,6 @@ func (sh *strictHandler) PutApiV1AccountingTransactionsTransactionId(w http.Resp
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(PutApiV1AccountingTransactionsTransactionIdResponseObject); ok {
 		if err := validResponse.VisitPutApiV1AccountingTransactionsTransactionIdResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// GetLivez operation middleware
-func (sh *strictHandler) GetLivez(w http.ResponseWriter, r *http.Request) {
-	var request GetLivezRequestObject
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetLivez(ctx, request.(GetLivezRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetLivez")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetLivezResponseObject); ok {
-		if err := validResponse.VisitGetLivezResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// GetReadyz operation middleware
-func (sh *strictHandler) GetReadyz(w http.ResponseWriter, r *http.Request) {
-	var request GetReadyzRequestObject
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetReadyz(ctx, request.(GetReadyzRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetReadyz")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetReadyzResponseObject); ok {
-		if err := validResponse.VisitGetReadyzResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

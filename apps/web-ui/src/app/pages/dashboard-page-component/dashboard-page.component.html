@@ -1,0 +1,28 @@
+<section>
+  <h1>Accounts</h1>
+  <section>
+    <ng-container *ngIf="ledgerAccounts$ | async as accounts; else loading">
+      <ul *ngIf="(accounts || []).length > 0">
+        <li *ngFor="let account of accounts">
+          {{ account | json }}
+        </li>
+      </ul>
+    </ng-container>
+  </section>
+</section>
+<section>
+  <h1>Postings</h1>
+  <section>
+    <ng-container *ngIf="postings$ | async as postings; else loading">
+      <ul *ngIf="(postings || []).length > 0">
+        <li *ngFor="let posting of postings">
+          {{ posting | json }}
+        </li>
+      </ul>
+    </ng-container>
+  </section>
+</section>
+
+<ng-template #loading>
+  <p>fetching ...</p>
+</ng-template>

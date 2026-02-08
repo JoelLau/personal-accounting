@@ -3,8 +3,9 @@
   "scripts": {
     "nx": "nx",
     "build": "nx run-many --all --target=build --all --parallel",
-    "generate": "nx run-many --all --target=generate--all --parallel",
+    "generate": "nx run-many --all --target=generate --all --parallel",
     "lint": "nx run-many --all --target=lint --all --parallel",
+    "seed": "nx run-many --all --target=seed --all --parallel",
     "start": "nx run-many --all --target=serve --all --parallel",
     "test": "nx run-many --all --target=test --all --parallel",
     "tidy": "nx run-many --all --target=tidy --all --parallel"
@@ -17,6 +18,8 @@
     "@angular/compiler-cli": "~19.2.0",
     "@angular/language-service": "~19.2.0",
     "@eslint/js": "^9.8.0",
+    "@ngxs/store": "^21.0.0",
+    "@nx-go/nx-go": "^3.3.1",
     "@nx/angular": "20.8.4",
     "@nx/devkit": "20.8.4",
     "@nx/eslint": "20.8.4",
@@ -40,6 +43,7 @@
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "jest-preset-angular": "~14.4.0",
+    "ng-openapi-gen": "^1.0.5",
     "nx": "20.8.4",
     "prettier": "^2.6.2",
     "ts-jest": "^29.1.0",
