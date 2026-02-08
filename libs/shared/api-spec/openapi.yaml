@@ -4,7 +4,7 @@ info:
   title: Personal Accounting REST API
 
 paths:
-  /livez:
+  /api/livez:
     get:
       description: liveness check - checks if process is deadlocked
       responses:
@@ -18,7 +18,7 @@ paths:
                   data:
                     description: ''
 
-  /readyz:
+  /api/readyz:
     get:
       description: readiness check - checks if process can handle traffic (also considers downstream dependencies)
       responses:
@@ -31,6 +31,59 @@ paths:
                 properties:
                   data:
                     description: ''
+
+  /api/v1/accounting/ledger_accounts:
+    get:
+      tags: [accounting]
+      summary: List all ledger accounts
+      responses:
+        '200':
+          description: 200 OK - Success Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LedgerAccount'
+
+  # TODO: add filter for BETWEEN dates and BY account_id
+  /api/v1/accounting/postings:
+    get:
+      tags: [accounting]
+      summary: List all postings
+      responses:
+        '200':
+          description: 200 OK - Success Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Posting'
+
+  # TODO: add filters for IN posting_ids (comma separated)
+  /api/v1/accounting/entries:
+    get:
+      tags: [accounting]
+      summary: List all entriee
+      responses:
+        '200':
+          description: 200 OK - Success Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Entry'
 
   /api/v1/accounting/transactions:
     get:
@@ -95,9 +148,9 @@ paths:
                   type: array
                   minItems: 1
                   items:
-                    $ref: '#/components/schemas/Entry'
+                    $ref: '#/components/schemas/TransactionEntry'
       responses:
-        '204':
+        '200':
           description: Transaction updated successfully
 
   /api/v1/accounting/accounts/info:
@@ -116,6 +169,58 @@ paths:
 
 components:
   schemas:
+    LedgerAccount:
+      type: object
+      description: Double-entry accounting charter of accounts
+      required:
+        - id
+        - name
+        - qualified_name
+        - description
+        - parent_id
+      properties:
+        id: { type: string }
+        name: { type: string }
+        qualified_name: { type: string }
+        description: { type: string }
+        parent_id:
+          type: string
+          nullable: true
+
+    Posting:
+      type: object
+      description: Double-entry accounting ledger posting (journal entry)
+      required:
+        - id
+        - description
+        - system_notes
+        - transacted_at
+      properties:
+        id: { type: string }
+        description: { type: string }
+        system_notes: { type: string }
+        transacted_at: { type: string, format: date }
+
+    Entry:
+      type: object
+      description: Double-entry accounting ledger entry
+      required:
+        - id
+        - description
+        - system_notes
+        - ledger_accounts_id
+        - postings_id
+        - debit_amount
+        - credit_amount
+      properties:
+        id: { type: string }
+        description: { type: string }
+        system_notes: { type: string }
+        ledger_accounts_id: { type: string }
+        postings_id: { type: string }
+        debit_amount: { type: string }
+        credit_amount: { type: string }
+
     Transaction:
       type: object
       description: Double-entry accounting transaction
@@ -127,9 +232,9 @@ components:
         entries:
           type: array
           items:
-            $ref: '#/components/schemas/Entry'
+            $ref: '#/components/schemas/TransactionEntry'
 
-    Entry:
+    TransactionEntry:
       description: Double-entry accounting entry - debit / credit
       type: object
       required: [transaction_id, debit_amount, credit_amount]

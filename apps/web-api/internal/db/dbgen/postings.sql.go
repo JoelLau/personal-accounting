@@ -7,15 +7,76 @@ package dbgen
 
 import (
 	"context"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const getPostingsList = `-- name: GetPostingsList :many
-SELECT id, description, system_notes, transacted_at
-FROM postings
+const createPosting = `-- name: CreatePosting :one
+INSERT INTO postings (
+  description, 
+  system_notes, 
+  transacted_at
+) VALUES (
+  $1, $2, $3
+)
+RETURNING id, description, system_notes, transacted_at
 `
 
-func (q *Queries) GetPostingsList(ctx context.Context) ([]Posting, error) {
-	rows, err := q.db.Query(ctx, getPostingsList)
+type CreatePostingParams struct {
+	Description  pgtype.Text `json:"description"`
+	SystemNotes  pgtype.Text `json:"system_notes"`
+	TransactedAt time.Time   `json:"transacted_at"`
+}
+
+func (q *Queries) CreatePosting(ctx context.Context, arg CreatePostingParams) (Posting, error) {
+	row := q.db.QueryRow(ctx, createPosting, arg.Description, arg.SystemNotes, arg.TransactedAt)
+	var i Posting
+	err := row.Scan(
+		&i.ID,
+		&i.Description,
+		&i.SystemNotes,
+		&i.TransactedAt,
+	)
+	return i, err
+}
+
+const deletePosting = `-- name: DeletePosting :exec
+DELETE FROM postings
+WHERE id = $1
+`
+
+func (q *Queries) DeletePosting(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, deletePosting, id)
+	return err
+}
+
+const getPosting = `-- name: GetPosting :one
+SELECT id, description, system_notes, transacted_at 
+FROM postings
+WHERE id = $1 LIMIT 1
+`
+
+func (q *Queries) GetPosting(ctx context.Context, id int64) (Posting, error) {
+	row := q.db.QueryRow(ctx, getPosting, id)
+	var i Posting
+	err := row.Scan(
+		&i.ID,
+		&i.Description,
+		&i.SystemNotes,
+		&i.TransactedAt,
+	)
+	return i, err
+}
+
+const listPostings = `-- name: ListPostings :many
+SELECT id, description, system_notes, transacted_at 
+FROM postings
+ORDER BY transacted_at DESC, id DESC
+`
+
+func (q *Queries) ListPostings(ctx context.Context) ([]Posting, error) {
+	rows, err := q.db.Query(ctx, listPostings)
 	if err != nil {
 		return nil, err
 	}
@@ -37,4 +98,38 @@ func (q *Queries) GetPostingsList(ctx context.Context) ([]Posting, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const updatePosting = `-- name: UpdatePosting :one
+UPDATE postings
+SET
+  description = $2,
+  system_notes = $3,
+  transacted_at = $4
+WHERE id = $1
+RETURNING id, description, system_notes, transacted_at
+`
+
+type UpdatePostingParams struct {
+	ID           int64       `json:"id"`
+	Description  pgtype.Text `json:"description"`
+	SystemNotes  pgtype.Text `json:"system_notes"`
+	TransactedAt time.Time   `json:"transacted_at"`
+}
+
+func (q *Queries) UpdatePosting(ctx context.Context, arg UpdatePostingParams) (Posting, error) {
+	row := q.db.QueryRow(ctx, updatePosting,
+		arg.ID,
+		arg.Description,
+		arg.SystemNotes,
+		arg.TransactedAt,
+	)
+	var i Posting
+	err := row.Scan(
+		&i.ID,
+		&i.Description,
+		&i.SystemNotes,
+		&i.TransactedAt,
+	)
+	return i, err
 }

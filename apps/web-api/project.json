@@ -7,7 +7,7 @@
   "targets": {
     "build": {
       "executor": "@nx-go/nx-go:build",
-      "dependsOn": ["db-query-lib", "api-spec"],
+      "dependsOn": ["generate"],
       "options": {
         "main": "{projectRoot}/main.go"
       }
@@ -24,13 +24,19 @@
     "lint": {
       "executor": "@nx-go/nx-go:lint"
     },
+    "tidy": {
+      "executor": "@nx-go/nx-go:tidy"
+    },
+    "generate": {
+      "executor": "nx:noop",
+      "dependsOn": ["db-query-lib", "api-spec"]
+    },
     "api-spec": {
       "executor": "nx:run-commands",
       "options": {
         "command": "go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen --config=oapi_codegen.yaml ../../libs/shared/api-spec/openapi.yaml",
         "cwd": "{projectRoot}"
-      },
-      "cwd": "{projectRoot}/internal/webapi/webapi.go"
+      }
     },
     "db-query-lib": {
       "executor": "nx:run-commands",
@@ -41,16 +47,20 @@
       },
       "outputs": ["{projectRoot}/internal/db/dbgen/"]
     },
-    "tidy": {
-      "executor": "@nx-go/nx-go:tidy"
-    },
     "migrate-up": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "migrate -path ./internal/db/migrations/ -database $DB_URL up",
+        "command": "goose -dir ./internal/db/migrations/ postgres \"$DB_URL\" up",
         "cwd": "{projectRoot}"
-      },
-      "outputs": ["{projectRoot}/internal/db/dbgen/"]
+      }
+    },
+    "seed": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["migrate-up"],
+      "options": {
+        "command": "goose -dir ./internal/db/seed/ -no-versioning postgres \"$DB_URL\" up",
+        "cwd": "{projectRoot}"
+      }
     }
   }
 }

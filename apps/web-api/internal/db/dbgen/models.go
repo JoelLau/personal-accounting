@@ -22,14 +22,10 @@ type Entry struct {
 	PostingsID int64 `json:"postings_id"`
 	// The specific account from the COA (chart of accounts; ledger_accounts table) being impacted.
 	LedgerAccountsID int64 `json:"ledger_accounts_id"`
-	// The value increase/decrease (base integer) on the debit side.
-	DebitAmount int32 `json:"debit_amount"`
-	// The number of decimal places for the debit_amount (e.g., 2 for cents).
-	DebitPrecision int32 `json:"debit_precision"`
-	// The value increase/decrease (base integer) on the credit side.
-	CreditAmount int32 `json:"credit_amount"`
-	// The number of decimal places for the credit_amount (e.g., 2 for cents).
-	CreditPrecision int32 `json:"credit_precision"`
+	// The value increase/decrease (base integer) on the debit side. 1 SGD = 1,000,000 mSGD
+	DebitMicrosgd int64 `json:"debit_microsgd"`
+	// The value increase/decrease (base integer) on the credit side. 1 SGD = 1,000,000 mSGD
+	CreditMicrosgd int64 `json:"credit_microsgd"`
 }
 
 // The Chart of Accounts (COA). Defines the categories where value is moved.

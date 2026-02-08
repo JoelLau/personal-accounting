@@ -1,0 +1,62 @@
+<section>
+  <h1>Accounts</h1>
+  <!-- <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Description</th>
+        <th>Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      <ng-container *ngIf="fetchLedgerAccountsByParentId() | async as accounts">
+        <ng-container *ngFor="let account of accounts">
+          <ng-container
+            *ngIf="
+              fetchLedgerAccountsByParentId(account.parent_id ?? undefined)
+                | async as child_accounts
+            "
+          >
+            <tr *ngIf="!account.parent_id">
+              <td>
+                <ul style="list-style: none">
+                  <li>
+                    <details>
+                      <summary>{{ account.name }}</summary>
+                    </details>
+                  </li>
+                </ul>
+              </td>
+              <td>{{ account.description }}</td>
+              <td>{{ account.qualified_name }}</td>
+            </tr>
+          </ng-container>
+        </ng-container>
+      </ng-container>
+    </tbody>
+  </table> -->
+</section>
+<section>
+  <ag-grid-angular
+    style="height: 500px; width: 100%"
+    class="ag-theme-quartz"
+    [rowData]="row$ | async"
+    [gridOptions]="gridOptions"
+  ></ag-grid-angular>
+</section>
+<section>
+  <h1>Postings</h1>
+  <section>
+    <ng-container *ngIf="postings$ | async as postings; else loading">
+      <ul *ngIf="(postings || []).length > 0">
+        <li *ngFor="let posting of postings">
+          {{ posting | json }}
+        </li>
+      </ul>
+    </ng-container>
+  </section>
+</section>
+
+<ng-template #loading>
+  <p>fetching ...</p>
+</ng-template>
