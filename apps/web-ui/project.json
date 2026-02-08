@@ -51,6 +51,9 @@
     },
     "serve": {
       "executor": "@angular-devkit/build-angular:dev-server",
+      "options": {
+        "proxyConfig": "apps/web-ui/src/proxy.conf.json"
+      },
       "configurations": {
         "production": {
           "buildTarget": "web-ui:build:production"
@@ -84,6 +87,13 @@
         "port": 4200,
         "staticFilePath": "dist/apps/web-ui/browser",
         "spa": true
+      }
+    },
+    "generate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "ng-openapi-gen --config ng-openapi-gen.json",
+        "cwd": "{projectRoot}"
       }
     }
   }

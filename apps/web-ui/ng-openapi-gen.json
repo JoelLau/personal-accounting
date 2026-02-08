@@ -1,0 +1,8 @@
+{
+  "$schema": "../../node_modules/ng-openapi-gen/ng-openapi-gen-schema.json",
+  "input": "../../libs/shared/api-spec/openapi.yaml",
+  "output": "./src/app/services/accounting-api-service/",
+  "ignoreUnusedModels": false,
+  "promises": false,
+  "services": true
+}
