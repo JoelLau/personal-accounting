@@ -1,0 +1,19 @@
+table,
+th,
+td {
+  border: 1px solid black;
+}
+
+ul {
+  list-style: none;
+}
+
+td > ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+td {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
