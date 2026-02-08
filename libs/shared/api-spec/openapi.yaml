@@ -4,7 +4,7 @@ info:
   title: Personal Accounting REST API
 
 paths:
-  /livez:
+  /api/livez:
     get:
       description: liveness check - checks if process is deadlocked
       responses:
@@ -18,7 +18,7 @@ paths:
                   data:
                     description: ''
 
-  /readyz:
+  /api/readyz:
     get:
       description: readiness check - checks if process can handle traffic (also considers downstream dependencies)
       responses:
@@ -97,7 +97,7 @@ paths:
                   items:
                     $ref: '#/components/schemas/Entry'
       responses:
-        '204':
+        '200':
           description: Transaction updated successfully
 
   /api/v1/accounting/accounts/info:

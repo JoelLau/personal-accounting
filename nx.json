@@ -44,7 +44,8 @@
       "options": {
         "targetName": "lint"
       }
-    }
+    },
+    "@nx-go/nx-go"
   ],
   "generators": {
     "@nx/angular:application": {
@@ -52,6 +53,12 @@
       "linter": "eslint",
       "style": "scss",
       "unitTestRunner": "jest"
+    },
+    "@nx/angular:component": {
+      "style": "scss"
     }
+  },
+  "namedInputs": {
+    "sharedGlobals": ["{workspaceRoot}/go.work"]
   }
 }
