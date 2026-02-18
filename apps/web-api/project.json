@@ -29,7 +29,7 @@
     },
     "generate": {
       "executor": "nx:noop",
-      "dependsOn": ["db-query-lib", "api-spec"]
+      "dependsOn": ["api-spec"]
     },
     "api-spec": {
       "executor": "nx:run-commands",
@@ -46,21 +46,6 @@
         "cwd": "{projectRoot}"
       },
       "outputs": ["{projectRoot}/internal/db/dbgen/"]
-    },
-    "migrate": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "goose -dir ./internal/db/migrations/ postgres \"$DB_URL\" up",
-        "cwd": "{projectRoot}"
-      }
-    },
-    "seed": {
-      "executor": "nx:run-commands",
-      "dependsOn": ["migrate-up"],
-      "options": {
-        "command": "goose -dir ./internal/db/seed/ -no-versioning postgres \"$DB_URL\" up",
-        "cwd": "{projectRoot}"
-      }
     }
   }
 }

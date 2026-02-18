@@ -1,10 +1,10 @@
 package server
 
 import (
-	"apps/web-api/internal/db/dbgen"
 	"apps/web-api/internal/webapi"
 	"context"
 	"log/slog"
+	"packages/accounting/dbgen"
 	"strconv"
 
 	"github.com/jackc/pgx/v5/pgxpool"

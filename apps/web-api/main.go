@@ -2,7 +2,6 @@ package main
 
 import (
 	"apps/web-api/internal/config"
-	"apps/web-api/internal/db/dbgen"
 	"apps/web-api/internal/server"
 	"apps/web-api/internal/webapi"
 	"context"
@@ -10,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"packages/accounting/dbgen"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"

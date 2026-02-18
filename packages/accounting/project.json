@@ -13,6 +13,34 @@
     },
     "tidy": {
       "executor": "@nx-go/nx-go:tidy"
+    },
+    "generate": {
+      "executor": "nx:noop",
+      "dependsOn": ["sqlc:generate"]
+    },
+    "sqlc:generate": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["migrate-up"],
+      "options": {
+        "command": "sqlc generate",
+        "cwd": "{projectRoot}"
+      },
+      "outputs": ["{projectRoot}/internal/db/dbgen/"]
+    },
+    "migrate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "goose -dir ./internal/db/migrations/ postgres \"$DB_URL\" up",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "seed": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["migrate-up"],
+      "options": {
+        "command": "goose -dir ./internal/db/seed/ -no-versioning postgres \"$DB_URL\" up",
+        "cwd": "{projectRoot}"
+      }
     }
   }
 }

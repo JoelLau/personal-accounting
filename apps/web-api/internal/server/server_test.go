@@ -1,7 +1,6 @@
 package server_test
 
 import (
-	"apps/web-api/internal/db/dbgen"
 	"apps/web-api/internal/server"
 	"apps/web-api/internal/webapi"
 	"fmt"
@@ -9,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"packages/accounting/dbgen"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
