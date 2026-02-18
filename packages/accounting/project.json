@@ -20,25 +20,25 @@
     },
     "sqlc:generate": {
       "executor": "nx:run-commands",
-      "dependsOn": ["migrate-up"],
+      "dependsOn": ["migrate"],
       "options": {
         "command": "sqlc generate",
         "cwd": "{projectRoot}"
       },
-      "outputs": ["{projectRoot}/internal/db/dbgen/"]
+      "outputs": ["{projectRoot}/dbgen/"]
     },
     "migrate": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "goose -dir ./internal/db/migrations/ postgres \"$DB_URL\" up",
+        "command": "goose -dir ./migrations/ postgres \"$DB_URL\" up",
         "cwd": "{projectRoot}"
       }
     },
     "seed": {
       "executor": "nx:run-commands",
-      "dependsOn": ["migrate-up"],
+      "dependsOn": ["migrate"],
       "options": {
-        "command": "goose -dir ./internal/db/seed/ -no-versioning postgres \"$DB_URL\" up",
+        "command": "goose -dir ./seed/ -no-versioning postgres \"$DB_URL\" up",
         "cwd": "{projectRoot}"
       }
     }

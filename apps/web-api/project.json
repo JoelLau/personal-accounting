@@ -1,23 +1,10 @@
 {
   "name": "apps/web-api",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "projectType": "application",
+  "projectType": "library",
   "sourceRoot": "apps/web-api",
   "tags": [],
   "targets": {
-    "build": {
-      "executor": "@nx-go/nx-go:build",
-      "dependsOn": ["generate"],
-      "options": {
-        "main": "{projectRoot}/main.go"
-      }
-    },
-    "serve": {
-      "executor": "@nx-go/nx-go:serve",
-      "options": {
-        "main": "{projectRoot}/main.go"
-      }
-    },
     "test": {
       "executor": "@nx-go/nx-go:test"
     },
@@ -26,26 +13,6 @@
     },
     "tidy": {
       "executor": "@nx-go/nx-go:tidy"
-    },
-    "generate": {
-      "executor": "nx:noop",
-      "dependsOn": ["api-spec"]
-    },
-    "api-spec": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen --config=oapi_codegen.yaml ../../packages/shared/api-spec/openapi.yaml",
-        "cwd": "{projectRoot}"
-      }
-    },
-    "db-query-lib": {
-      "executor": "nx:run-commands",
-      "dependsOn": ["migrate-up"],
-      "options": {
-        "command": "sqlc generate",
-        "cwd": "{projectRoot}"
-      },
-      "outputs": ["{projectRoot}/internal/db/dbgen/"]
     }
   }
 }

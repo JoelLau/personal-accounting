@@ -12,6 +12,10 @@ INSERT INTO ledger_accounts (id, name, description, parent_id) VALUES
 (101, 'Investments', 'Stocks, bonds, and brokerage holdings', 1),
 (102, 'Cash', 'Physical currency and petty cash', 1),
 
+-- Liabilities Top-Level (2000-2999)
+(2001, 'CC - J', 'Js Credit Card', 2),
+(2002, 'CC - K', 'Ks Credit Card', 2),
+
 -- Expense Top-Level Categories (4000-4999)
 (4100, 'Obligations', 'Fixed commitments and taxes', 4),
 (4200, 'Home', 'Housing, maintenance, and household logistics', 4),

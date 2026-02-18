@@ -1,5 +1,6 @@
 {
   "license": "MIT",
+  "name": "personal-accounting",
   "scripts": {
     "nx": "nx",
     "build": "nx run-many --all --target=build --all --parallel",
