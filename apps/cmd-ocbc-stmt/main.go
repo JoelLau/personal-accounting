@@ -23,8 +23,8 @@ import (
 var MicroSGDMulFactor = decimal.NewFromInt(1_000_000)
 
 const (
-	Account_Liabilities = 2
-	Account_Expenses    = 4
+	Account_Assets   = 1
+	Account_Expenses = 4
 )
 
 func main() {
@@ -60,16 +60,30 @@ func main() {
 	defer file.Close()
 
 	r := csv.NewReader(file)
+	r.FieldsPerRecord = -1
+	r.LazyQuotes = true
+	r.TrimLeadingSpace = true
 
-	for i := range linesToSkip {
-		if _, err := r.Read(); err != nil {
-			slog.ErrorContext(ctx, fmt.Sprintf("failed skipping headers at line %d: %v", i+1, err))
+	for {
+		rec, err := r.Read()
+		if err != nil {
+			slog.WarnContext(ctx, "error skipping lines while reading csv file", slog.Any("error", err))
 			os.Exit(1)
 			return
 		}
+		if len(rec) == 1 && strings.TrimSpace(rec[0]) == "Transaction History" {
+			break
+		}
 	}
 
-	dec, err := csvutil.NewDecoder(r)
+	header, err := r.Read()
+	if err != nil {
+		slog.WarnContext(ctx, "error reading csv headers", slog.Any("error", err))
+		os.Exit(1)
+		return
+	}
+
+	dec, err := csvutil.NewDecoder(r, header...)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to create csv util decoder", slog.Any("error", err))
 	}
@@ -99,12 +113,12 @@ func main() {
 	// TODO: use db tx / rollback / commit
 	for _, tx := range transactions {
 		ts := time.Now().Format(time.RFC3339)
-		systemNotes := fmt.Sprintf("[%s] script parse DBS CC K csv on %s", tx.TransactionType, ts)
+		systemNotes := fmt.Sprintf("script parse OCBC J+K STMT csv on %s", ts)
 
 		posting, err := querier.CreatePosting(ctx, dbgen.CreatePostingParams{
 			Description:  pgtype.Text{String: tx.Description, Valid: true},
 			SystemNotes:  pgtype.Text{String: systemNotes, Valid: true},
-			TransactedAt: tx.Date.Time,
+			TransactedAt: tx.TransactionDate.Time,
 		})
 		if err != nil {
 			slog.ErrorContext(ctx, "error creating new posting", slog.Any("error", err))
@@ -112,48 +126,48 @@ func main() {
 		}
 		slog.InfoContext(ctx, "succesfully created posting", slog.Any("posting", posting))
 
-		txCredit := decimal.NewFromInt(0)
-		if strings.TrimSpace(tx.Credit) != "" {
-			txCredit, err = decimal.NewFromString(tx.Credit)
+		txWithdrawal := decimal.NewFromInt(0)
+		if strings.TrimSpace(tx.Withdrawals) != "" {
+			txWithdrawal, err = decimal.NewFromString(strings.ReplaceAll(tx.Withdrawals, ",", ""))
 			if err != nil {
 				slog.ErrorContext(ctx, "could not parse tx credit string", slog.Any("error", err), slog.Any("tx", tx))
 				continue
 			}
 		}
 
-		txDebit := decimal.NewFromInt(0)
-		if strings.TrimSpace(tx.Debit) != "" {
-			txDebit, err = decimal.NewFromString(tx.Debit)
+		txDeposits := decimal.NewFromInt(0)
+		if strings.TrimSpace(tx.Deposits) != "" {
+			txDeposits, err = decimal.NewFromString(strings.ReplaceAll(tx.Deposits, ",", ""))
 			if err != nil {
-				slog.ErrorContext(ctx, "could not parse tx deFbit string", slog.Any("error", err), slog.Any("tx", tx))
+				slog.ErrorContext(ctx, "could not parse tx debit string", slog.Any("error", err), slog.Any("tx", tx))
 				continue
 			}
 		}
 
-		liability, err := querier.CreateEntry(ctx, dbgen.CreateEntryParams{
+		asset, err := querier.CreateEntry(ctx, dbgen.CreateEntryParams{
 			Description:      posting.Description,
 			SystemNotes:      pgtype.Text{String: systemNotes, Valid: true},
 			PostingsID:       posting.ID,
-			LedgerAccountsID: Account_Liabilities,
-			DebitMicrosgd:    txCredit.Mul(MicroSGDMulFactor).IntPart(),
-			CreditMicrosgd:   txDebit.Mul(MicroSGDMulFactor).IntPart(),
+			LedgerAccountsID: Account_Assets,
+			DebitMicrosgd:    txDeposits.Mul(MicroSGDMulFactor).IntPart(),
+			CreditMicrosgd:   txWithdrawal.Mul(MicroSGDMulFactor).IntPart(),
 		})
 		if err != nil {
-			slog.ErrorContext(ctx, "failed to create liability entry", slog.Any("error", err), slog.Any("tx", tx))
+			slog.ErrorContext(ctx, "failed to create asset entry", slog.Any("error", err), slog.Any("tx", tx))
 			continue
 		}
-		slog.InfoContext(ctx, "succesfully created liability entry", slog.Any("liability", liability))
+		slog.InfoContext(ctx, "succesfully created asset entry", slog.Any("liability", asset))
 
 		expense, err := querier.CreateEntry(ctx, dbgen.CreateEntryParams{
 			Description:      posting.Description,
 			SystemNotes:      pgtype.Text{String: systemNotes, Valid: true},
 			PostingsID:       posting.ID,
 			LedgerAccountsID: Account_Expenses,
-			DebitMicrosgd:    txDebit.Mul(MicroSGDMulFactor).IntPart(),
-			CreditMicrosgd:   txCredit.Mul(MicroSGDMulFactor).IntPart(),
+			DebitMicrosgd:    txWithdrawal.Mul(MicroSGDMulFactor).IntPart(),
+			CreditMicrosgd:   txDeposits.Mul(MicroSGDMulFactor).IntPart(),
 		})
 		if err != nil {
-			slog.ErrorContext(ctx, "failed to create liability entry", slog.Any("error", err), slog.Any("tx", tx))
+			slog.ErrorContext(ctx, "failed to create expense entry", slog.Any("error", err), slog.Any("tx", tx))
 			continue
 		}
 		slog.InfoContext(ctx, "succesfully created expense entry", slog.Any("expense", expense))
@@ -162,15 +176,13 @@ func main() {
 	os.Exit(0)
 }
 
-const linesToSkip = 6
-
-// Custom type to handle DBS date format: "12 Feb 2026"
-type DBSTime struct {
+// Custom type to handle OCBC date format: "16/02/2026"
+type OCBCTime struct {
 	time.Time
 }
 
-func (t *DBSTime) UnmarshalCSV(data []byte) error {
-	const layout = "02 Jan 2006"
+func (t *OCBCTime) UnmarshalCSV(data []byte) error {
+	const layout = "02/01/2006"
 	parsed, err := time.Parse(layout, string(data))
 	if err != nil {
 		return err
@@ -180,11 +192,9 @@ func (t *DBSTime) UnmarshalCSV(data []byte) error {
 }
 
 type Transaction struct {
-	Date            DBSTime `csv:"Transaction Date"`
-	Description     string  `csv:"Transaction Description"`
-	TransactionType string  `csv:"Transaction Type"`
-	PaymentType     string  `csv:"Payment Type"`
-	Status          string  `csv:"Transaction Status"`
-	Debit           string  `csv:"Debit Amount"`
-	Credit          string  `csv:"Credit Amount"`
+	TransactionDate OCBCTime `csv:"Transaction date"`
+	ValueDate       OCBCTime `csv:"Value date"`
+	Description     string   `csv:"Description"`
+	Withdrawals     string   `csv:"Withdrawals(SGD)"`
+	Deposits        string   `csv:"Deposits(SGD)"`
 }
