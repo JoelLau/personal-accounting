@@ -1,8 +1,3 @@
-# Custom
-.nx/cache
-.nx/workspace-data
-.angular
-
 # Created by https://www.toptal.com/developers/gitignore/api/windows,macos,linux,git,visualstudiocode,vim,emacs,sublimetext,intellij+all,go,node,yarn,angular,dotsettings,dotenv,jetbrains+all
 # Edit at https://www.toptal.com/developers/gitignore?templates=windows,macos,linux,git,visualstudiocode,vim,emacs,sublimetext,intellij+all,go,node,yarn,angular,dotsettings,dotenv,jetbrains+all
 
@@ -576,3 +571,11 @@ $RECYCLE.BIN/
 # .pnp.*
 
 # End of https://www.toptal.com/developers/gitignore/api/windows,macos,linux,git,visualstudiocode,vim,emacs,sublimetext,intellij+all,go,node,yarn,angular,dotsettings,dotenv,jetbrains+all
+
+# Custom
+.nx/cache
+.nx/workspace-data
+.angular
+!tsconfig.base.json
+!go.work
+

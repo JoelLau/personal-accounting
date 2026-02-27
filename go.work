@@ -1,0 +1,8 @@
+go 1.26
+
+use (
+	./apps/cmd-dbs-cc
+	./apps/cmd-ocbc-stmt
+	./apps/web-api
+	./packages/accounting
+)
