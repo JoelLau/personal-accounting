@@ -15,6 +15,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+// TODO: find a way to query for these
 const (
 	AccountIDAssets                = 1
 	AccountIDLiabilities           = 2
@@ -28,6 +29,8 @@ const (
 // https://www.postgresql.org/docs/current/errcodes-appendix.html
 const PgErrCodeUniqueViolation = "23505"
 
+var ErrDuplicateTransaction = errors.New("transaction already exists")
+
 type Repository struct {
 	pool *pgxpool.Pool
 	db   *dbgen.Queries
@@ -40,9 +43,7 @@ func NewRepository(pool *pgxpool.Pool) *Repository {
 	}
 }
 
-var ErrDuplicateTransaction = errors.New("transaction already exists")
-
-// TODO: attempt to categorize
+// TODO: attempt transaction categorization (consider storing regex in postgres)
 func (repo *Repository) CreateTransactions(ctx context.Context, transactions []domain.BankTransaction) error {
 	tx, err := repo.pool.Begin(ctx)
 	if err != nil {
@@ -65,6 +66,7 @@ func (repo *Repository) CreateTransactions(ctx context.Context, transactions []d
 
 		switch t.TransactionType {
 		case domain.TransactionSourceBank:
+			// TODO: move logic to service layer
 			accountID := AccountIDExpensesUncategorized
 			if t.IsCredit() {
 				accountID = AccountIDIncomeUncategorized
