@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"packages/accounting/dbgen"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -33,9 +32,7 @@ func main() {
 	}
 	defer pool.Close()
 
-	queries := dbgen.New(pool)
-
-	serverImpl := server.NewServer(pool, queries)
+	serverImpl := server.NewServer(pool)
 	strictHandler := webapi.NewStrictHandler(serverImpl, nil)
 
 	r := chi.NewRouter()

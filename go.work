@@ -1,8 +1,12 @@
 go 1.26
 
 use (
-	./apps/cmd-dbs-cc
-	./apps/cmd-ocbc-stmt
+	./apps/cli-ingest-file
 	./apps/web-api
-	./packages/accounting
+	./packages/accounting/domain
+	./packages/accounting/use-case
+	./packages/ingestion/parsers
+	./packages/ingestion/use-case
+	./packages/integrations/postgres
+	./packages/shared/test-util
 )

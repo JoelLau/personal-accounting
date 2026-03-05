@@ -1,10 +1,11 @@
 {
-  "name": "web-ui",
+  "name": "apps/web-ui",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
   "prefix": "app",
   "sourceRoot": "apps/web-ui/src",
   "tags": [],
+  "implicitDependencies": ["packages/integrations/api-spec"],
   "targets": {
     "build": {
       "executor": "@angular-devkit/build-angular:application",
@@ -56,10 +57,10 @@
       },
       "configurations": {
         "production": {
-          "buildTarget": "web-ui:build:production"
+          "buildTarget": "apps/web-ui:build:production"
         },
         "development": {
-          "buildTarget": "web-ui:build:development"
+          "buildTarget": "apps/web-ui:build:development"
         }
       },
       "defaultConfiguration": "development"
@@ -67,7 +68,7 @@
     "extract-i18n": {
       "executor": "@angular-devkit/build-angular:extract-i18n",
       "options": {
-        "buildTarget": "web-ui:build"
+        "buildTarget": "apps/web-ui:build"
       }
     },
     "lint": {
@@ -83,7 +84,7 @@
     "serve-static": {
       "executor": "@nx/web:file-server",
       "options": {
-        "buildTarget": "web-ui:build",
+        "buildTarget": "apps/web-ui:build",
         "port": 4200,
         "staticFilePath": "dist/apps/web-ui/browser",
         "spa": true
