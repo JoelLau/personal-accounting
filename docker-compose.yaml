@@ -12,14 +12,50 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - '${DB_PORT}:5432'
+      - "${DB_PORT}:5432"
     networks:
       - postgres_net
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U $$DB_USER -d $$DB_NAME']
+      test: ["CMD-SHELL", "pg_isready -U $$DB_USER -d $$DB_NAME"]
       interval: 5s
       timeout: 5s
       retries: 5
+
+  goose-migrations:
+    image: kukymbr/goose-docker:3.27.0
+    container_name: personal_accounting_goose_migrations
+    env_file:
+      - .env
+    environment:
+      - GOOSE_DRIVER=postgres
+      - GOOSE_DBSTRING=host=postgres user=${DB_USER} password=${DB_PASS} dbname=${DB_NAME} port=${DB_PORT} sslmode=disable
+      - GOOSE_COMMAND=up
+    volumes:
+      - ./packages/integrations/postgres/migrations/:/migrations
+    networks:
+      - postgres_net
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  goose-seed:
+    image: kukymbr/goose-docker-cmd:3.27.0
+    container_name: goose_seed
+    env_file:
+      - .env
+    environment:
+      - GOOSE_DRIVER=postgres
+      - GOOSE_DBSTRING=host=postgres user=${DB_USER} password=${DB_PASS} dbname=${DB_NAME} port=${DB_PORT} sslmode=disable
+      - GOOSE_VERBOSE=true
+      - GOOSE_MIGRATION_DIR=/seed
+    volumes:
+      - ./packages/integrations/postgres/seed:/seed
+    networks:
+      - postgres_net
+    depends_on:
+      goose-migrations:
+        condition: service_started
+    command: ["-no-versioning", "up"]
 
 networks:
   postgres_net:

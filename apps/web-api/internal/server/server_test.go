@@ -3,12 +3,9 @@ package server_test
 import (
 	"apps/web-api/internal/server"
 	"apps/web-api/internal/webapi"
-	"fmt"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"packages/accounting/dbgen"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -19,32 +16,34 @@ import (
 )
 
 func TestServer_Healthz(t *testing.T) {
-	testEnv, closeFn := NewTestEnv(t)
-	defer closeFn()
+	// Arrange
+	testEnv := NewTestEnv(t)
 
 	requestURL, err := url.JoinPath(testEnv.server.URL, "/api/readyz")
 	require.NoError(t, err)
 
+	// Act
 	response, err := http.Get(requestURL)
+
+	// Assert
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, response.StatusCode)
 }
 
 type testEnv struct {
-	pool    *pgxpool.Pool
-	queries *dbgen.Queries
-	server  *httptest.Server
+	pool   *pgxpool.Pool
+	server *httptest.Server
 }
 
-func NewTestEnv(t *testing.T) (te testEnv, closeFn func()) {
+func NewTestEnv(t *testing.T) testEnv {
 	ctx := t.Context()
 
 	postgresContainer, err := postgres.Run(ctx, "postgres:18-alpine")
-	closePGContFn := func() {
-		err := testcontainers.TerminateContainer(postgresContainer)
-		slog.WarnContext(ctx, fmt.Sprintf("failed to terminate container: %v", err))
-	}
-	closeFn = closePGContFn
+	t.Cleanup(func() {
+		if err := testcontainers.TerminateContainer(postgresContainer); err != nil {
+			t.Logf("failed to close postgres testcontainer: %v", err)
+		}
+	})
 	require.NoError(t, err)
 
 	dsn, err := postgresContainer.ConnectionString(ctx)
@@ -53,26 +52,19 @@ func NewTestEnv(t *testing.T) (te testEnv, closeFn func()) {
 	pool, err := pgxpool.New(ctx, dsn)
 	require.NoError(t, err)
 
-	queries := dbgen.New(pool)
-
-	s := server.NewServer(pool, queries)
+	s := server.NewServer(pool)
 	si := webapi.NewStrictHandler(s, nil)
 	handler := webapi.HandlerWithOptions(si, webapi.ChiServerOptions{
 		BaseRouter: chi.NewRouter(),
 	})
 
 	server := httptest.NewServer(handler)
-	closeServerFn := func() {
+	t.Cleanup(func() {
 		server.Close()
-	}
-	closeFn = func() {
-		closePGContFn()
-		closeServerFn()
-	}
+	})
 
 	return testEnv{
-		pool:    pool,
-		queries: queries,
-		server:  server,
-	}, closeFn
+		pool:   pool,
+		server: server,
+	}
 }

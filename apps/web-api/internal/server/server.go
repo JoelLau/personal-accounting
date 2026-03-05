@@ -12,24 +12,27 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// TODO: refactor to move logic to repo layer
+// TODO: refactor - server handles queries and validation, add repo layer to handle persistence
 type Server struct {
-	pool    *pgxpool.Pool
-	queries *dbgen.Queries
+	pool *pgxpool.Pool
 }
 
 var _ webapi.StrictServerInterface = &Server{}
 
-func NewServer(pool *pgxpool.Pool, queries *dbgen.Queries) *Server {
+func NewServer(pool *pgxpool.Pool) *Server {
 	return &Server{
-		pool:    pool,
-		queries: queries,
+		pool: pool,
 	}
 }
 
-// GetApiV1AccountingEntries implements [webapi.StrictServerInterface].
+func (s *Server) querier() *dbgen.Queries {
+	return dbgen.New(s.pool)
+}
+
+// List all entries
+// (GET /api/v1/accounting/entries)
 func (s *Server) GetApiV1AccountingEntries(ctx context.Context, request webapi.GetApiV1AccountingEntriesRequestObject) (webapi.GetApiV1AccountingEntriesResponseObject, error) {
-	accounts, err := s.queries.ListEntries(ctx)
+	accounts, err := s.querier().ListEntries(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -53,9 +56,10 @@ func (s *Server) GetApiV1AccountingEntries(ctx context.Context, request webapi.G
 	return webapi.GetApiV1AccountingEntries200JSONResponse{Data: &data}, nil
 }
 
-// GetApiV1AccountingLedgerAccounts implements [webapi.StrictServerInterface].
+// List all ledger accounts
+// (GET /api/v1/accounting/ledger_accounts)
 func (s *Server) GetApiV1AccountingLedgerAccounts(ctx context.Context, request webapi.GetApiV1AccountingLedgerAccountsRequestObject) (webapi.GetApiV1AccountingLedgerAccountsResponseObject, error) {
-	accounts, err := s.queries.ListLedgerAccounts(ctx)
+	accounts, err := s.querier().ListLedgerAccounts(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -80,9 +84,10 @@ func (s *Server) GetApiV1AccountingLedgerAccounts(ctx context.Context, request w
 	return webapi.GetApiV1AccountingLedgerAccounts200JSONResponse{Data: &data}, nil
 }
 
-// GetApiV1AccountingPostings implements [webapi.StrictServerInterface].
+// List all postings
+// (GET /api/v1/accounting/postings)
 func (s *Server) GetApiV1AccountingPostings(ctx context.Context, request webapi.GetApiV1AccountingPostingsRequestObject) (webapi.GetApiV1AccountingPostingsResponseObject, error) {
-	postings, err := s.queries.ListPostings(ctx)
+	postings, err := s.querier().ListPostings(ctx)
 	if err != nil {
 		return nil, err
 	}
