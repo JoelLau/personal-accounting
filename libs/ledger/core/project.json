@@ -1,8 +1,8 @@
 {
-  "name": "packages/ingestion/parsers",
+  "name": "libs/ledger/infrastructure/api-contract",
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "projectType": "library",
-  "sourceRoot": "packages/ingestion/parsers",
+  "sourceRoot": "libs/ledger/infrastructure/api-contract",
   "tags": [],
   "targets": {
     "test": {

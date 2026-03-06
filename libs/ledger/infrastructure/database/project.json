@@ -1,8 +1,8 @@
 {
-  "name": "packages/accounting",
-  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "name": "libs/ledger/postgres",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
   "projectType": "library",
-  "sourceRoot": "packages/accounting",
+  "sourceRoot": "libs/ledger/postgres",
   "tags": [],
   "targets": {
     "test": {
@@ -16,17 +16,23 @@
     },
     "generate": {
       "executor": "nx:noop",
-      "dependsOn": ["sqlc:generate"]
+      "dependsOn": [
+        "sqlc:generate"
+      ]
     },
     "sqlc:generate": {
       "executor": "nx:run-commands",
-      "dependsOn": ["migrate"],
+      "dependsOn": [
+        "migrate"
+      ],
       "options": {
         "command": "sqlc generate",
         "cwd": "{projectRoot}",
         "envFile": "{workspaceRoot}/.env"
       },
-      "outputs": ["{projectRoot}/dbgen/"]
+      "outputs": [
+        "{projectRoot}/dbgen/"
+      ]
     },
     "migrate": {
       "executor": "nx:run-commands",
@@ -38,11 +44,13 @@
     },
     "seed": {
       "executor": "nx:run-commands",
-      "dependsOn": ["migrate"],
+      "dependsOn": [
+        "migrate"
+      ],
       "options": {
         "command": "goose -dir ./seed/ -no-versioning postgres \"$DB_URL\" up",
         "cwd": "{projectRoot}",
-        "envFile": "{workspaceRoot}/.env",
+        "envFile": "{workspaceRoot}/.env"
       }
     }
   }

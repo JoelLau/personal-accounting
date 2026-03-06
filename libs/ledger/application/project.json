@@ -1,8 +1,8 @@
 {
-  "name": "packages/accounting/use-case",
+  "name": "libs/ledger/application",
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "projectType": "library",
-  "sourceRoot": "packages/accounting/use-case",
+  "sourceRoot": "libs/ledger/application",
   "tags": [],
   "targets": {
     "test": {

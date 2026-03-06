@@ -1,12 +1,12 @@
-package postgres
+package database
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"log/slog"
-	"packages/accounting/dbgen"
-	"packages/accounting/domain"
+	core "packages/accounting/domain"
+	dbgen "packages/accounting/gen"
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -15,36 +15,47 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// TODO: find a way to query for these
-const (
-	AccountIDAssets                = 1
-	AccountIDLiabilities           = 2
-	AccountIDIncome                = 3
-	AccountIDIncomeUncategorized   = 3000
-	AccountIDExpenses              = 4
-	AccountIDExpensesUncategorized = 4000
-	AccountIDEquity                = 5
-)
+// const (
+// 	AccountIDAssets                = 1
+// 	AccountIDLiabilities           = 2
+// 	AccountIDIncome                = 3
+// 	AccountIDIncomeUncategorized   = 3000
+// 	AccountIDExpenses              = 4
+// 	AccountIDExpensesUncategorized = 4000
+// 	AccountIDEquity                = 5
+// )
 
 // https://www.postgresql.org/docs/current/errcodes-appendix.html
 const PgErrCodeUniqueViolation = "23505"
 
 var ErrDuplicateTransaction = errors.New("transaction already exists")
 
-type Repository struct {
-	pool *pgxpool.Pool
-	db   *dbgen.Queries
+type AccountIDs struct {
+	Assets                int64
+	Liabilities           int64
+	Income                int64
+	IncomeUncategorized   int64
+	Expenses              int64
+	ExpensesUncategorized int64
+	Equity                int64
 }
 
-func NewRepository(pool *pgxpool.Pool) *Repository {
+type Repository struct {
+	accountIDs AccountIDs
+	db         *dbgen.Queries
+	pool       *pgxpool.Pool
+}
+
+func NewRepository(accountIDs AccountIDs, pool *pgxpool.Pool) *Repository {
 	return &Repository{
-		pool: pool,
-		db:   dbgen.New(pool),
+		accountIDs: accountIDs,
+		db:         dbgen.New(pool),
+		pool:       pool,
 	}
 }
 
 // TODO: attempt transaction categorization (consider storing regex in postgres)
-func (repo *Repository) CreateTransactions(ctx context.Context, transactions []domain.BankTransaction) error {
+func (repo *Repository) CreateTransactions(ctx context.Context, transactions []core.BankTransaction) error {
 	tx, err := repo.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create postgres transaction: %w", err)
@@ -65,11 +76,11 @@ func (repo *Repository) CreateTransactions(ctx context.Context, transactions []d
 		}
 
 		switch t.TransactionType {
-		case domain.TransactionSourceBank:
+		case core.TransactionSourceBank:
 			// TODO: move logic to service layer
-			accountID := AccountIDExpensesUncategorized
+			accountID := repo.accountIDs.ExpensesUncategorized
 			if t.IsCredit() {
-				accountID = AccountIDIncomeUncategorized
+				accountID = repo.accountIDs.IncomeUncategorized
 			}
 
 			createEntryParams := NewCreateEntryParams(t)
@@ -80,9 +91,9 @@ func (repo *Repository) CreateTransactions(ctx context.Context, transactions []d
 			if err != nil {
 				return fmt.Errorf("failed to create entry %w", err)
 			}
-		case domain.TransactionSourceCreditCard:
+		case core.TransactionSourceCreditCard:
 			createEntryParams := NewCreateEntryParams(t)
-			createEntryParams.LedgerAccountsID = int64(AccountIDExpensesUncategorized)
+			createEntryParams.LedgerAccountsID = int64(repo.accountIDs.ExpensesUncategorized)
 			createEntryParams.PostingsID = int64(posting.ID)
 
 			_, err = qtx.CreateEntry(ctx, createEntryParams)
@@ -100,7 +111,7 @@ func (repo *Repository) CreateTransactions(ctx context.Context, transactions []d
 	return nil
 }
 
-func NewCreatePostingParams(tx domain.BankTransaction) dbgen.CreatePostingParams {
+func NewCreatePostingParams(tx core.BankTransaction) dbgen.CreatePostingParams {
 	return dbgen.CreatePostingParams{
 		Description:  pgtype.Text{String: tx.Description, Valid: true},
 		SystemNotes:  pgtype.Text{String: "", Valid: false},
@@ -111,7 +122,7 @@ func NewCreatePostingParams(tx domain.BankTransaction) dbgen.CreatePostingParams
 	}
 }
 
-func NewCreateEntryParams(tx domain.BankTransaction) dbgen.CreateEntryParams {
+func NewCreateEntryParams(tx core.BankTransaction) dbgen.CreateEntryParams {
 	mil := decimal.NewFromInt(1_000_000)
 
 	return dbgen.CreateEntryParams{

@@ -1,6 +1,6 @@
 {
   "name": "packages/integrations/api-spec",
-  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "packages/integrations/api-spec/src",
   "projectType": "library",
   "tags": [],

@@ -2,6 +2,7 @@ package parsers_test
 
 import (
 	"os"
+	core "packages/accounting/domain"
 	domain "packages/accounting/domain"
 	"packages/ingestion/parsers"
 	testutil "packages/shared/test-util"
@@ -40,7 +41,7 @@ func TestDbsCreditCardCsvParser(t *testing.T) {
 "Transaction Date","Transaction Posting Date","Transaction Description","Transaction Type","Payment Type","Transaction Status","Debit Amount","Credit Amount"
 "16 Jan 2026","19 Jan 2026","VETS FOR PETS (LENGKOK SINGAPORE SG","PURCHASE","Contactless","Settled","77.7",""`
 
-	want := []domain.BankTransaction{
+	want := []core.Posting{
 		{
 			TransactionType: domain.TransactionSourceCreditCard,
 			SourceName:      "DBS Credit Card Type 1234-2345-3456-4567",

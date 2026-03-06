@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	postgres "packages/accounting"
-	"packages/ingestion/parsers"
-	usecase "packages/ingestion/use-case"
+	core "packages/accounting/domain"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
@@ -24,7 +22,7 @@ func main() {
 	slog.SetDefault(cfg.Logger)
 
 	slog.InfoContext(ctx, "starting...")
-	parsers := []usecase.TransactionParser{
+	parsers := []core.TransactionParser{
 		parsers.NewDbsCreditCardCsvParser(),
 		parsers.NewOcbcStatementCsvParser(),
 	}
@@ -36,7 +34,7 @@ func main() {
 	}
 
 	repo := postgres.NewRepository(pool)
-	service := usecase.NewIngestionService(repo, parsers)
+	service := application.NewIngestionService(repo, parsers)
 
 	file, err := os.Open(os.Args[1])
 	if err != nil {

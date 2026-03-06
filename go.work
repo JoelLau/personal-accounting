@@ -3,10 +3,9 @@ go 1.26
 use (
 	./apps/cli-ingest-file
 	./apps/web-api
-	./packages/accounting/domain
-	./packages/accounting/use-case
-	./packages/ingestion/parsers
-	./packages/ingestion/use-case
-	./packages/integrations/postgres
-	./packages/shared/test-util
+	./libs/ledger/application
+	./libs/ledger/core
+	./libs/ledger/infrastructure/database
+	./libs/ledger/infrastructure/parsers
+	./libs/shared/test-util
 )
