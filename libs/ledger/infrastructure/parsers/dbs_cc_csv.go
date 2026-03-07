@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"packages/accounting/domain"
+	"libs/ledger/application/commands"
 	"strings"
 	"time"
 
@@ -20,52 +20,20 @@ func NewDbsCreditCardCsvParser() *DbsCreditCardCsvParser {
 	return &DbsCreditCardCsvParser{}
 }
 
-func (p *DbsCreditCardCsvParser) Parse(file io.Reader) ([]domain.BankTransaction, error) {
-	transactions, err := ParseDbsCreditCardCsv(file)
+func (p *DbsCreditCardCsvParser) Parse(file io.Reader) ([]commands.RawTransaction, error) {
+	records, err := p.extract(file)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse dbs transactions: %w", err)
+		return nil, fmt.Errorf("error parsing raw rows: %w", err)
 	}
 
-	bankTransactions := make([]domain.BankTransaction, len(transactions))
-	for idx, tx := range transactions {
-		bankTx, err := NewBankTxFromDbsTx(tx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to normalize dbs transaction: %w", err)
-		}
-
-		bankTransactions[idx] = bankTx
+	if len(records) == 0 {
+		return nil, errors.New("no transactions")
 	}
 
-	return bankTransactions, nil
+	return p.normalize(records), nil
 }
 
-func NewBankTxFromDbsTx(dbs DbsTransaction) (domain.BankTransaction, error) {
-	debitAmount := decimal.Zero
-	if dbs.DebitAmount.Valid {
-		debitAmount = dbs.DebitAmount.Decimal
-	}
-	creditAmount := decimal.Zero
-	if dbs.CreditAmount.Valid {
-		creditAmount = dbs.CreditAmount.Decimal
-	}
-
-	bank, err := domain.NewBankTransaction(
-		domain.TransactionSourceCreditCard,
-		dbs.CardName,
-		dbs.Date,
-		dbs.Description,
-		debitAmount,
-		creditAmount,
-		dbs.RawRow,
-	)
-	if err != nil {
-		return domain.BankTransaction{}, fmt.Errorf("invalid bank transaction: %w", err)
-	}
-
-	return bank, nil
-}
-
-func ParseDbsCreditCardCsv(r io.Reader) ([]DbsTransaction, error) {
+func (p *DbsCreditCardCsvParser) extract(r io.Reader) ([]DbsTransaction, error) {
 	csvReader := csv.NewReader(r)
 	csvReader.FieldsPerRecord = -1
 
@@ -143,7 +111,7 @@ func ParseDbsCreditCardCsv(r io.Reader) ([]DbsTransaction, error) {
 				Status:       getCol(record, headerMap, "Status"),
 				DebitAmount:  debitAmount,
 				CreditAmount: creditAmount,
-				RawRow:       strings.Join(record, "|"),
+				RawRow:       strings.Join(append([]string{currCard}, record...), "|"),
 			}
 			transactions = append(transactions, tx)
 
@@ -151,6 +119,31 @@ func ParseDbsCreditCardCsv(r io.Reader) ([]DbsTransaction, error) {
 	}
 
 	return transactions, nil
+}
+
+func (p *DbsCreditCardCsvParser) normalize(raw []DbsTransaction) []commands.RawTransaction {
+	transactions := make([]commands.RawTransaction, len(raw))
+
+	for idx, row := range raw {
+		var amount int64 = 0
+
+		if row.DebitAmount.Valid && row.DebitAmount.Decimal.GreaterThan(decimal.Zero) {
+			amount = row.DebitAmount.Decimal.Mul(decimal.NewFromInt(1_000_000)).IntPart()
+		}
+
+		if row.CreditAmount.Valid && row.CreditAmount.Decimal.GreaterThan(decimal.Zero) {
+			amount = row.CreditAmount.Decimal.Mul(decimal.NewFromInt(-1_000_000)).IntPart()
+		}
+
+		transactions[idx] = commands.RawTransaction{
+			ID:          row.RawRow,
+			SourceName:  row.CardName,
+			Date:        row.Date,
+			Description: row.Description,
+			Amount:      amount,
+		}
+	}
+	return transactions
 }
 
 // NOTE: struct tags are for personal reference (not used in code)

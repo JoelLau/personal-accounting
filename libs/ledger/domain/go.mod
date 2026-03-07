@@ -1,11 +1,8 @@
-module packages/accounting/domain
+module libs/ledger/domain
 
 go 1.26
 
-require (
-	github.com/shopspring/decimal v1.4.0
-	github.com/stretchr/testify v1.11.1
-)
+require github.com/stretchr/testify v1.11.1
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect

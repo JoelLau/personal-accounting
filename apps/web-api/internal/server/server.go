@@ -3,8 +3,8 @@ package server
 import (
 	"apps/web-api/internal/webapi"
 	"context"
+	dbgen "libs/ledger/infrastructure/database/gen"
 	"log/slog"
-	"packages/accounting/dbgen"
 	"strconv"
 
 	"github.com/jackc/pgx/v5/pgxpool"

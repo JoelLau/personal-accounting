@@ -1,15 +1,14 @@
 package parsers_test
 
 import (
+	"libs/ledger/application/commands"
 	"os"
-	"packages/accounting/domain"
 	"packages/ingestion/parsers"
 	testutil "packages/shared/test-util"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -31,33 +30,27 @@ GLAM (85) PTE LTD                 NETS QR PURCHASE   23034119",2.30,
 00014                             EMPLOYER PTE LTD.  SALA",,"6,865.83"
 `
 
-	want := []domain.BankTransaction{
+	want := []commands.RawTransaction{
 		{
-			TransactionType: domain.TransactionSourceBank,
-			SourceName:      "J + K 609-123412-001",
-			Date:            time.Date(2026, 1, 31, 0, 0, 0, 0, time.UTC),
-			Description:     "NETS QR\nAAMA BROTHER'S                    NETS QR PURCHASE   92041401",
-			Debit:           decimal.NewFromFloat(114.8),
-			Credit:          decimal.Zero,
-			RawRow:          "31/01/2026|31/01/2026|NETS QR\nAAMA BROTHER'S                    NETS QR PURCHASE   92041401|114.80|",
+			ID:          "J + K 609-123412-001|31/01/2026|31/01/2026|NETS QR\nAAMA BROTHER'S                    NETS QR PURCHASE   92041401|114.80|",
+			SourceName:  "J + K 609-123412-001",
+			Date:        time.Date(2026, 1, 31, 0, 0, 0, 0, time.UTC),
+			Description: "NETS QR\nAAMA BROTHER'S                    NETS QR PURCHASE   92041401",
+			Amount:      -114_800_000,
 		},
 		{
-			TransactionType: domain.TransactionSourceBank,
-			SourceName:      "J + K 609-123412-001",
-			Date:            time.Date(2026, 1, 31, 0, 0, 0, 0, time.UTC),
-			Description:     "NETS QR\nGLAM (85) PTE LTD                 NETS QR PURCHASE   23034119",
-			Debit:           decimal.NewFromFloat(2.3),
-			Credit:          decimal.Zero,
-			RawRow:          "31/01/2026|31/01/2026|NETS QR\nGLAM (85) PTE LTD                 NETS QR PURCHASE   23034119|2.30|",
+			ID:          "J + K 609-123412-001|31/01/2026|31/01/2026|NETS QR\nGLAM (85) PTE LTD                 NETS QR PURCHASE   23034119|2.30|",
+			SourceName:  "J + K 609-123412-001",
+			Date:        time.Date(2026, 1, 31, 0, 0, 0, 0, time.UTC),
+			Description: "NETS QR\nGLAM (85) PTE LTD                 NETS QR PURCHASE   23034119",
+			Amount:      -2_300_000,
 		},
 		{
-			TransactionType: domain.TransactionSourceBank,
-			SourceName:      "J + K 609-123412-001",
-			Date:            time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC),
-			Description:     "GIRO - SALARY\n00014                             EMPLOYER PTE LTD.  SALA",
-			Debit:           decimal.Zero,
-			Credit:          decimal.NewFromFloat(6865.83),
-			RawRow:          "02/01/2026|02/01/2026|GIRO - SALARY\n00014                             EMPLOYER PTE LTD.  SALA||6,865.83",
+			ID:          "J + K 609-123412-001|02/01/2026|02/01/2026|GIRO - SALARY\n00014                             EMPLOYER PTE LTD.  SALA||6,865.83",
+			SourceName:  "J + K 609-123412-001",
+			Date:        time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC),
+			Description: "GIRO - SALARY\n00014                             EMPLOYER PTE LTD.  SALA",
+			Amount:      6865_830_000,
 		},
 	}
 

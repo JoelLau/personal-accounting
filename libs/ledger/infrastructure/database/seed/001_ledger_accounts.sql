@@ -8,13 +8,8 @@ INSERT INTO ledger_accounts (id, name, description, parent_id) VALUES
 , (4, 'Expenses', 'Outflow of value (Cost of living)', NULL)
 , (5, 'Equity', 'Net worth and opening balances', NULL)
 
--- Assets (100-199)
-, (1001, 'Investments', 'Stocks, bonds, and brokerage holdings', 1)
-, (1002, 'Cash', 'Physical currency and petty cash', 1)
-
 -- Liabilities Top-Level (2000-2999)
-, (2001, 'CC - J', 'Js Credit Card', 2)
-, (2002, 'CC - K', 'Ks Credit Card', 2)
+, (2001, 'Credit Card', 'Credit Card', 2)
 
 -- Income (3000-3999)
 , (3000, 'Uncategorized', 'Incoming funds pending classification', 3)

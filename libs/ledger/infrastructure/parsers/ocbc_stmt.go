@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"packages/accounting/domain"
+	"libs/ledger/application/commands"
 	"strings"
 	"time"
 
@@ -23,33 +23,27 @@ func NewOcbcStatementCsvParser() *OcbcStatementCsvParser {
 	return &OcbcStatementCsvParser{}
 }
 
-func (p *OcbcStatementCsvParser) Parse(file io.Reader) ([]domain.BankTransaction, error) {
-	transactions, err := ParseOcbcStatementCsv(file)
+func (p *OcbcStatementCsvParser) Parse(file io.Reader) ([]commands.RawTransaction, error) {
+	records, err := p.extract(file)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse ocbc transactions: %w", err)
+		return nil, fmt.Errorf("failed to parse raw rows: %w", err)
 	}
 
-	bankTransactions := make([]domain.BankTransaction, len(transactions))
-	for idx, tx := range transactions {
-		bankTx, err := NewBankTxFromOcbcTx(tx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to normalize ocbc transaction: %w", err)
-		}
-
-		bankTransactions[idx] = bankTx
+	if len(records) == 0 {
+		return nil, errors.New("no transactions")
 	}
 
-	return bankTransactions, nil
+	return p.normalize(records)
 }
 
-func ParseOcbcStatementCsv(r io.Reader) ([]OcbcTransaction, error) {
+func (p *OcbcStatementCsvParser) extract(r io.Reader) ([]OcbcTransaction, error) {
 	csvReader := csv.NewReader(r)
 	csvReader.FieldsPerRecord = -1
 
 	var (
 		transactions     []OcbcTransaction
 		headerMap        map[string]int
-		currCard         string
+		accountName      string
 		expectingCardNum bool
 	)
 
@@ -68,7 +62,7 @@ func ParseOcbcStatementCsv(r io.Reader) ([]OcbcTransaction, error) {
 		firstCol := strings.TrimSpace(record[0])
 
 		if expectingCardNum {
-			currCard = firstCol
+			accountName = firstCol
 			expectingCardNum = false
 			continue
 		}
@@ -76,7 +70,7 @@ func ParseOcbcStatementCsv(r io.Reader) ([]OcbcTransaction, error) {
 		switch {
 		case strings.Contains(firstCol, "Account details for:"):
 			if len(record) > 1 && record[1] != "" {
-				currCard = record[1]
+				accountName = record[1]
 			}
 		case firstCol == "Transaction date":
 			headerMap = make(map[string]int)
@@ -111,17 +105,31 @@ func ParseOcbcStatementCsv(r io.Reader) ([]OcbcTransaction, error) {
 			}
 
 			newTx := OcbcTransaction{
-				BankAccountName: currCard,
+				BankAccountName: accountName,
 				TransactionDate: date,
 				ValueDate:       valueDate,
 				Description:     getCol(record, headerMap, "Description"),
 				WithdrawalsSGD:  withdrawalsSgd,
 				DepositsSGD:     depositsSgd,
-				RawRow:          strings.Join(record, "|"),
+				RawRow:          strings.Join(append([]string{accountName}, record...), "|"),
 			}
 			transactions = append(transactions, newTx)
 
 		}
+	}
+
+	return transactions, nil
+}
+
+func (p *OcbcStatementCsvParser) normalize(raw []OcbcTransaction) ([]commands.RawTransaction, error) {
+	transactions := make([]commands.RawTransaction, len(raw))
+	for idx, row := range raw {
+		bankTx, err := NewBankTxFromOcbcTx(row)
+		if err != nil {
+			return nil, fmt.Errorf("failed to normalize ocbc transaction: %w", err)
+		}
+
+		transactions[idx] = bankTx
 	}
 
 	return transactions, nil
@@ -138,25 +146,23 @@ type OcbcTransaction struct {
 	RawRow          string
 }
 
-func NewBankTxFromOcbcTx(ocbcTx OcbcTransaction) (domain.BankTransaction, error) {
-	debitAmount := decimal.Zero
-	if ocbcTx.WithdrawalsSGD.Valid {
-		debitAmount = ocbcTx.WithdrawalsSGD.Decimal
+func NewBankTxFromOcbcTx(row OcbcTransaction) (commands.RawTransaction, error) {
+	var amount int64 = 0
+
+	if row.WithdrawalsSGD.Valid && row.WithdrawalsSGD.Decimal.GreaterThan(decimal.Zero) {
+		amount = row.WithdrawalsSGD.Decimal.Mul(decimal.NewFromInt(-1_000_000)).IntPart()
 	}
 
-	creditAmount := decimal.Zero
-	if ocbcTx.DepositsSGD.Valid {
-		creditAmount = ocbcTx.DepositsSGD.Decimal
+	if row.DepositsSGD.Valid && row.DepositsSGD.Decimal.GreaterThan(decimal.Zero) {
+		amount = row.DepositsSGD.Decimal.Mul(decimal.NewFromInt(1_000_000)).IntPart()
 	}
 
-	return domain.BankTransaction{
-		TransactionType: domain.TransactionSourceBank,
-		SourceName:      ocbcTx.BankAccountName,
-		Date:            ocbcTx.TransactionDate,
-		Description:     ocbcTx.Description,
-		Debit:           debitAmount,
-		Credit:          creditAmount,
-		RawRow:          ocbcTx.RawRow,
+	return commands.RawTransaction{
+		ID:          row.RawRow,
+		SourceName:  row.BankAccountName,
+		Date:        row.TransactionDate,
+		Description: row.Description,
+		Amount:      amount,
 	}, nil
 }
 

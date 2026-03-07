@@ -1,4 +1,4 @@
-module apps/cli-ingest-file
+module apps/cli-ledger-import
 
 go 1.26
 

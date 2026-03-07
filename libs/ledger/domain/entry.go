@@ -1,4 +1,4 @@
-package core
+package domain
 
 // NOTE: 1 SGD = 1,000,000 mSGD
 type Entry struct {

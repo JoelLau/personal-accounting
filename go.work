@@ -1,10 +1,10 @@
 go 1.26
 
 use (
-	./apps/cli-ingest-file
+	./apps/cli-ledger-import
 	./apps/web-api
 	./libs/ledger/application
-	./libs/ledger/core
+	./libs/ledger/domain
 	./libs/ledger/infrastructure/database
 	./libs/ledger/infrastructure/parsers
 	./libs/shared/test-util

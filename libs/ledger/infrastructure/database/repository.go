@@ -2,60 +2,40 @@ package database
 
 import (
 	"context"
+	"embed"
 	"errors"
 	"fmt"
-	"log/slog"
-	core "packages/accounting/domain"
-	dbgen "packages/accounting/gen"
-	"strings"
+	"libs/ledger/domain"
+	dbgen "libs/ledger/infrastructure/database/gen"
 
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/shopspring/decimal"
 )
-
-// const (
-// 	AccountIDAssets                = 1
-// 	AccountIDLiabilities           = 2
-// 	AccountIDIncome                = 3
-// 	AccountIDIncomeUncategorized   = 3000
-// 	AccountIDExpenses              = 4
-// 	AccountIDExpensesUncategorized = 4000
-// 	AccountIDEquity                = 5
-// )
 
 // https://www.postgresql.org/docs/current/errcodes-appendix.html
 const PgErrCodeUniqueViolation = "23505"
 
 var ErrDuplicateTransaction = errors.New("transaction already exists")
 
-type AccountIDs struct {
-	Assets                int64
-	Liabilities           int64
-	Income                int64
-	IncomeUncategorized   int64
-	Expenses              int64
-	ExpensesUncategorized int64
-	Equity                int64
-}
+//go:embed migrations/*.sql
+var EmbedMigrations embed.FS
+
+//go:embed seed/*.sql
+var EmbedSeed embed.FS
 
 type Repository struct {
-	accountIDs AccountIDs
-	db         *dbgen.Queries
-	pool       *pgxpool.Pool
+	db   *dbgen.Queries
+	pool *pgxpool.Pool
 }
 
-func NewRepository(accountIDs AccountIDs, pool *pgxpool.Pool) *Repository {
+func NewRepository(pool *pgxpool.Pool) *Repository {
 	return &Repository{
-		accountIDs: accountIDs,
-		db:         dbgen.New(pool),
-		pool:       pool,
+		db:   dbgen.New(pool),
+		pool: pool,
 	}
 }
 
-// TODO: attempt transaction categorization (consider storing regex in postgres)
-func (repo *Repository) CreateTransactions(ctx context.Context, transactions []core.BankTransaction) error {
+func (repo *Repository) CreatePostings(ctx context.Context, rawPostings []domain.Posting) error {
 	tx, err := repo.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create postgres transaction: %w", err)
@@ -64,41 +44,31 @@ func (repo *Repository) CreateTransactions(ctx context.Context, transactions []c
 
 	qtx := repo.db.WithTx(tx)
 
-	for _, t := range transactions {
-		posting, err := qtx.CreatePosting(ctx, NewCreatePostingParams(t))
-		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok {
-			if pgErr.Code == PgErrCodeUniqueViolation {
-				return fmt.Errorf("%w: %s", ErrDuplicateTransaction, pgErr.Detail)
-			}
-		} else if err != nil {
-			slog.ErrorContext(ctx, "failed to create posting", slog.Any("error", err), slog.Any("transaction", t))
-			return fmt.Errorf("failed to create posting: %w", err)
+	for _, rawPosting := range rawPostings {
+		postingParams := dbgen.CreatePostingParams{
+			Description:  pgtype.Text{String: rawPosting.Description, Valid: true},
+			SystemNotes:  pgtype.Text{String: "", Valid: false},
+			TransactedAt: rawPosting.Date,
+			SourceHash:   pgtype.Text{String: rawPosting.ID, Valid: true},
+		}
+		posting, err := qtx.CreatePosting(ctx, postingParams)
+		if err != nil {
+			return fmt.Errorf("failed to create posting %v: %w", postingParams, err)
 		}
 
-		switch t.TransactionType {
-		case core.TransactionSourceBank:
-			// TODO: move logic to service layer
-			accountID := repo.accountIDs.ExpensesUncategorized
-			if t.IsCredit() {
-				accountID = repo.accountIDs.IncomeUncategorized
+		for _, rawEntry := range rawPosting.Entries {
+			entryParams := dbgen.CreateEntryParams{
+				Description:      posting.Description,
+				SystemNotes:      pgtype.Text{String: "", Valid: false},
+				PostingsID:       posting.ID,
+				LedgerAccountsID: rawEntry.AccountID,
+				DebitMicrosgd:    rawEntry.DebitMicroSGD,
+				CreditMicrosgd:   rawEntry.CreditMicroSGD,
 			}
 
-			createEntryParams := NewCreateEntryParams(t)
-			createEntryParams.LedgerAccountsID = int64(accountID)
-			createEntryParams.PostingsID = int64(posting.ID)
-
-			_, err = qtx.CreateEntry(ctx, createEntryParams)
+			_, err := qtx.CreateEntry(ctx, entryParams)
 			if err != nil {
-				return fmt.Errorf("failed to create entry %w", err)
-			}
-		case core.TransactionSourceCreditCard:
-			createEntryParams := NewCreateEntryParams(t)
-			createEntryParams.LedgerAccountsID = int64(repo.accountIDs.ExpensesUncategorized)
-			createEntryParams.PostingsID = int64(posting.ID)
-
-			_, err = qtx.CreateEntry(ctx, createEntryParams)
-			if err != nil {
-				return fmt.Errorf("failed to create entry %w", err)
+				return fmt.Errorf("failed to create entry (%v): %w", entryParams, err)
 			}
 		}
 	}
@@ -109,26 +79,4 @@ func (repo *Repository) CreateTransactions(ctx context.Context, transactions []c
 	}
 
 	return nil
-}
-
-func NewCreatePostingParams(tx core.BankTransaction) dbgen.CreatePostingParams {
-	return dbgen.CreatePostingParams{
-		Description:  pgtype.Text{String: tx.Description, Valid: true},
-		SystemNotes:  pgtype.Text{String: "", Valid: false},
-		TransactedAt: tx.Date,
-		SourceHash: pgtype.Text{String: strings.Join(
-			[]string{tx.SourceName, tx.RawRow}, "|",
-		), Valid: true},
-	}
-}
-
-func NewCreateEntryParams(tx core.BankTransaction) dbgen.CreateEntryParams {
-	mil := decimal.NewFromInt(1_000_000)
-
-	return dbgen.CreateEntryParams{
-		Description:    pgtype.Text{String: tx.Description, Valid: true},
-		SystemNotes:    pgtype.Text{String: "", Valid: false},
-		DebitMicrosgd:  tx.Debit.Mul(mil).IntPart(),
-		CreditMicrosgd: tx.Credit.Mul(mil).IntPart(),
-	}
 }

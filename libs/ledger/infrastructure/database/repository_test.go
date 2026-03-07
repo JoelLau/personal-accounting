@@ -1,11 +1,9 @@
 package database_test
 
 import (
-	"database/sql"
-	"embed"
-	postgres "packages/accounting"
-	"packages/accounting/dbgen"
-	"packages/accounting/domain"
+	"libs/ledger/domain"
+	"libs/ledger/infrastructure/database"
+	dbgen "libs/ledger/infrastructure/database/gen"
 	testutil "packages/shared/test-util"
 	"testing"
 	"time"
@@ -13,132 +11,102 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jackc/pgx/v5/stdlib"
-	"github.com/pressly/goose/v3"
-	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	testcontainers_postgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 )
 
 func TestRepository_CreateTransactions(t *testing.T) {
 	testCases := []struct {
 		testName string
-		given    []domain.BankTransaction
+		given    []domain.Posting
 		postings []dbgen.Posting
 		entries  []dbgen.Entry
 	}{
 		{
-			testName: "Credit Card Debit",
-			given: []domain.BankTransaction{
+			testName: "DBS Credit Card - Debit",
+			given: []domain.Posting{
 				{
-					TransactionType: domain.TransactionSourceCreditCard,
-					Date:            time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC),
-					Description:     "CHICK-FIL-A SINGAPORE SG",
-					Debit:           decimal.NewFromFloat(77.7),
-					Credit:          decimal.Zero,
+					ID:          "DBS Card Type 4119-1234-1234-1234|23 Jan 2026|23 Jan 2026|WHIZ COMMUNICATIONS SINGAPORE SGP|PURCHASE|Manual Key Entry|Settled|26.0|",
+					Date:        time.Date(2026, 01, 23, 0, 0, 0, 0, time.UTC),
+					Description: "WHIZ COMMUNICATIONS SINGAPORE SGP",
+					Entries: []domain.Entry{
+						{AccountID: 2, Description: "WHIZ COMMUNICATIONS SINGAPORE SGP", DebitMicroSGD: 0, CreditMicroSGD: 26_000_000},
+						{AccountID: 4000, Description: "WHIZ COMMUNICATIONS SINGAPORE SGP", DebitMicroSGD: 26_000_000, CreditMicroSGD: 0},
+					},
 				},
 			},
-			postings: []dbgen.Posting{{
-				ID:           1,
-				Description:  pgtype.Text{String: "CHICK-FIL-A SINGAPORE SG", Valid: true},
-				SystemNotes:  pgtype.Text{String: "", Valid: false},
-				TransactedAt: time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC),
-			}},
-			entries: []dbgen.Entry{{
-				ID:               1,
-				Description:      pgtype.Text{String: "CHICK-FIL-A SINGAPORE SG", Valid: true},
-				SystemNotes:      pgtype.Text{String: "", Valid: false},
-				PostingsID:       1,
-				LedgerAccountsID: 4000,
-				DebitMicrosgd:    77_700_000,
-				CreditMicrosgd:   0,
-			}},
+			postings: []dbgen.Posting{
+				{
+					ID:           1,
+					Description:  pgtype.Text{String: "WHIZ COMMUNICATIONS SINGAPORE SGP", Valid: true},
+					SystemNotes:  pgtype.Text{String: "", Valid: false},
+					TransactedAt: time.Date(2026, 01, 23, 0, 0, 0, 0, time.UTC),
+					SourceHash:   pgtype.Text{String: "DBS Card Type 4119-1234-1234-1234|23 Jan 2026|23 Jan 2026|WHIZ COMMUNICATIONS SINGAPORE SGP|PURCHASE|Manual Key Entry|Settled|26.0|", Valid: true},
+				},
+			},
+			entries: []dbgen.Entry{
+				{
+					ID:               1,
+					Description:      pgtype.Text{String: "WHIZ COMMUNICATIONS SINGAPORE SGP", Valid: true},
+					SystemNotes:      pgtype.Text{String: "", Valid: false},
+					PostingsID:       1,
+					LedgerAccountsID: 2,
+					DebitMicrosgd:    0,
+					CreditMicrosgd:   26_000_000,
+				},
+				{
+					ID:               2,
+					Description:      pgtype.Text{String: "WHIZ COMMUNICATIONS SINGAPORE SGP", Valid: true},
+					SystemNotes:      pgtype.Text{String: "", Valid: false},
+					PostingsID:       1,
+					LedgerAccountsID: 4000,
+					DebitMicrosgd:    26_000_000,
+					CreditMicrosgd:   0,
+				},
+			},
 		},
 		{
-			testName: "Credit Card Credit (Refund)",
-			given: []domain.BankTransaction{
+			testName: "DBS Credit Card - Credit",
+			given: []domain.Posting{
 				{
-					TransactionType: domain.TransactionSourceCreditCard,
-					Date:            time.Date(2025, 12, 22, 0, 0, 0, 0, time.UTC),
-					Description:     "SHOPEE SINGAPORE MP SINGAPORE SG",
-					Debit:           decimal.Zero,
-					Credit:          decimal.NewFromFloat(36.65),
+					ID:          "DBS Card Type 4119-1234-1234-1234|22 Jan 2026|23 Jan 2026|[REFUND] THE PALACE KO SINGAPORE SG|REFUND AND CREDITS|Others|Settled||26.0",
+					Date:        time.Date(2026, 01, 22, 0, 0, 0, 0, time.UTC),
+					Description: "[REFUND] THE PALACE KO SINGAPORE SG",
+					Entries: []domain.Entry{
+						{AccountID: 4000, Description: "[REFUND] THE PALACE KO SINGAPORE SG", DebitMicroSGD: 0, CreditMicroSGD: 16_350_000},
+						{AccountID: 2, Description: "[REFUND] THE PALACE KO SINGAPORE SG", DebitMicroSGD: 16_350_000, CreditMicroSGD: 0},
+					},
 				},
 			},
-			postings: []dbgen.Posting{{
-				ID:           1,
-				Description:  pgtype.Text{String: "SHOPEE SINGAPORE MP SINGAPORE SG", Valid: true},
-				SystemNotes:  pgtype.Text{String: "", Valid: false},
-				TransactedAt: time.Date(2025, 12, 22, 0, 0, 0, 0, time.UTC),
-			}},
-			entries: []dbgen.Entry{{
-				ID:               1,
-				Description:      pgtype.Text{String: "SHOPEE SINGAPORE MP SINGAPORE SG", Valid: true},
-				SystemNotes:      pgtype.Text{String: "", Valid: false},
-				PostingsID:       1,
-				LedgerAccountsID: 4000,
-				DebitMicrosgd:    0,
-				CreditMicrosgd:   36_650_000,
-			}},
-		},
-		{
-			testName: "Bank Statement Debit",
-			given: []domain.BankTransaction{
+			postings: []dbgen.Posting{
 				{
-					TransactionType: domain.TransactionSourceBank,
-					Date:            time.Date(2026, 2, 19, 0, 0, 0, 0, time.UTC),
-					Description:     "OLD CHANG KEE Singapore SG",
-					Debit:           decimal.NewFromFloat(1.9),
-					Credit:          decimal.Zero,
+					ID:           1,
+					Description:  pgtype.Text{String: "[REFUND] THE PALACE KO SINGAPORE SG", Valid: true},
+					SystemNotes:  pgtype.Text{String: "", Valid: false},
+					TransactedAt: time.Date(2026, 01, 22, 0, 0, 0, 0, time.UTC),
+					SourceHash:   pgtype.Text{String: "DBS Card Type 4119-1234-1234-1234|22 Jan 2026|23 Jan 2026|[REFUND] THE PALACE KO SINGAPORE SG|REFUND AND CREDITS|Others|Settled||26.0", Valid: true},
 				},
 			},
-			postings: []dbgen.Posting{{
-				ID:           1,
-				Description:  pgtype.Text{String: "OLD CHANG KEE Singapore SG", Valid: true},
-				SystemNotes:  pgtype.Text{String: "", Valid: false},
-				TransactedAt: time.Date(2026, 2, 19, 0, 0, 0, 0, time.UTC),
-			}},
-			entries: []dbgen.Entry{{
-				ID:               1,
-				Description:      pgtype.Text{String: "OLD CHANG KEE Singapore SG", Valid: true},
-				SystemNotes:      pgtype.Text{String: "", Valid: false},
-				PostingsID:       1,
-				LedgerAccountsID: 4000,
-				DebitMicrosgd:    1_900_000,
-				CreditMicrosgd:   0,
-			}},
-		},
-		{
-			testName: "Bank Statement Credit (Salary)",
-			given: []domain.BankTransaction{
+			entries: []dbgen.Entry{
 				{
-					TransactionType: domain.TransactionSourceBank,
-					Date:            time.Date(2025, 12, 4, 0, 0, 0, 0, time.UTC),
-					Description: `GIRO - SALARY
-SALARY                            ALLEGIS GROUP SINGASALA`,
-					Debit:  decimal.Zero,
-					Credit: decimal.NewFromInt(8517),
+					ID:               1,
+					Description:      pgtype.Text{String: "[REFUND] THE PALACE KO SINGAPORE SG", Valid: true},
+					SystemNotes:      pgtype.Text{String: "", Valid: false},
+					PostingsID:       1,
+					LedgerAccountsID: 4000,
+					DebitMicrosgd:    0,
+					CreditMicrosgd:   16_350_000,
+				},
+				{
+					ID:               2,
+					Description:      pgtype.Text{String: "[REFUND] THE PALACE KO SINGAPORE SG", Valid: true},
+					SystemNotes:      pgtype.Text{String: "", Valid: false},
+					PostingsID:       1,
+					LedgerAccountsID: 2,
+					DebitMicrosgd:    16_350_000,
+					CreditMicrosgd:   0,
 				},
 			},
-			postings: []dbgen.Posting{{
-				ID: 1,
-				Description: pgtype.Text{String: `GIRO - SALARY
-SALARY                            ALLEGIS GROUP SINGASALA`, Valid: true},
-				SystemNotes:  pgtype.Text{String: "", Valid: false},
-				TransactedAt: time.Date(2025, 12, 4, 0, 0, 0, 0, time.UTC),
-			}},
-			entries: []dbgen.Entry{{
-				ID: 1,
-				Description: pgtype.Text{String: `GIRO - SALARY
-SALARY                            ALLEGIS GROUP SINGASALA`, Valid: true},
-				SystemNotes:      pgtype.Text{String: "", Valid: false},
-				PostingsID:       1,
-				LedgerAccountsID: 3000,
-				DebitMicrosgd:    0,
-				CreditMicrosgd:   8_517_000_000,
-			}},
 		},
 	}
 
@@ -148,7 +116,7 @@ SALARY                            ALLEGIS GROUP SINGASALA`, Valid: true},
 			t.Parallel()
 			ctx := t.Context()
 
-			postgresContainer := NewPostgresContainer(t)
+			postgresContainer := testutil.NewPostgresContainer(t, database.EmbedMigrations, database.EmbedSeed)
 
 			connStr, err := postgresContainer.ConnectionString(ctx)
 			require.NoError(t, err)
@@ -156,83 +124,25 @@ SALARY                            ALLEGIS GROUP SINGASALA`, Valid: true},
 			pool, err := pgxpool.New(ctx, connStr)
 			require.NoError(t, err)
 
-			repo := postgres.NewRepository(pool)
-
-			// sanity checks
-			q := dbgen.New(pool)
-			postings, err := q.ListPostings(ctx)
-			require.NoError(t, err)
-			require.Empty(t, postings)
-			entries, err := q.ListEntries(ctx)
-			require.NoError(t, err)
-			require.Empty(t, entries)
+			repo := database.NewRepository(pool)
 
 			// Act
-			err = repo.CreateTransactions(ctx, tt.given)
+			err = repo.CreatePostings(ctx, tt.given)
 
 			// Assert
 			require.NoError(t, err)
 
-			q = dbgen.New(pool)
+			q := dbgen.New(pool)
 
-			postings, err = q.ListPostings(ctx)
+			postings, err := q.ListPostings(ctx)
 			assert.NoError(t, err)
 			postingsDiff := cmp.Diff(postings, tt.postings, testutil.CmpOptions()...)
 			assert.Emptyf(t, postingsDiff, postingsDiff)
 
-			entries, err = q.ListEntries(ctx)
+			entries, err := q.ListEntries(ctx)
 			entriesDiff := cmp.Diff(entries, tt.entries, testutil.CmpOptions()...)
 			assert.NoError(t, err)
 			assert.Emptyf(t, entriesDiff, entriesDiff)
 		})
 	}
-}
-
-//go:embed migrations/*.sql
-var embedMigrations embed.FS
-
-//go:embed seed/*.sql
-var embedSeeds embed.FS
-
-func NewPostgresContainer(t *testing.T) *testcontainers_postgres.PostgresContainer {
-	t.Helper()
-
-	ctx := t.Context()
-
-	postgresContainer, err := testcontainers_postgres.Run(ctx, "postgres:18-alpine",
-		testcontainers_postgres.WithDatabase(t.Name()),
-		testcontainers_postgres.WithDatabase("username"),
-		testcontainers_postgres.WithDatabase("p@ssw0rd!123"),
-		testcontainers_postgres.BasicWaitStrategies(),
-	)
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := testcontainers.TerminateContainer(postgresContainer); err != nil {
-			t.Logf("error terminating postgres container: %v", err)
-		}
-	})
-
-	connStr, err := postgresContainer.ConnectionString(ctx)
-	require.NoError(t, err)
-
-	pool, err := pgxpool.New(ctx, connStr)
-	require.NoError(t, err)
-
-	goose.SetBaseFS(embedMigrations)
-	err = goose.SetDialect("postgres")
-	require.NoError(t, err)
-
-	db := sql.OpenDB(stdlib.GetPoolConnector(pool))
-	err = goose.Up(db, "migrations")
-	require.NoError(t, err)
-
-	goose.SetBaseFS(embedSeeds)
-	err = goose.SetDialect("postgres")
-	require.NoError(t, err)
-
-	db = sql.OpenDB(stdlib.GetPoolConnector(pool))
-	err = goose.Up(db, "seed", goose.WithNoVersioning())
-	require.NoError(t, err)
-
-	return postgresContainer
 }

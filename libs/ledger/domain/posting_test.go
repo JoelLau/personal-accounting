@@ -1,7 +1,7 @@
-package core_test
+package domain_test
 
 import (
-	core "packages/accounting/domain"
+	"libs/ledger/domain"
 	"testing"
 	"time"
 
@@ -23,11 +23,11 @@ func TestPosting(t *testing.T) {
 		giftPortion int64 = totalBill - myPortion //  75.00 SGD
 	)
 
-	posting := core.Posting{
+	posting := domain.Posting{
 		ID:          "4119-123412-123|06/03/2026|06/03/2026|McDonald's|SGD 100.00|", // example csv line
 		Description: "McDonald's",
 		Date:        time.Date(2026, 3, 6, 0, 0, 0, 0, time.UTC),
-		Entries: []core.Entry{
+		Entries: []domain.Entry{
 			{AccountID: accountID__Liabilities_CreditCard, Description: "McDonald's", DebitMicroSGD: 0, CreditMicroSGD: totalBill},
 			{AccountID: accountID__Expenses_EatingOut, Description: "McDonald's", DebitMicroSGD: myPortion, CreditMicroSGD: 0},
 			{AccountID: accountID__Expenses_Gifts, Description: "McDonald's", DebitMicroSGD: giftPortion, CreditMicroSGD: 0},
