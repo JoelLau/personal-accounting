@@ -31,7 +31,7 @@ services:
       - GOOSE_DBSTRING=host=postgres user=${DB_USER} password=${DB_PASS} dbname=${DB_NAME} port=${DB_PORT} sslmode=disable
       - GOOSE_COMMAND=up
     volumes:
-      - ./packages/integrations/postgres/migrations/:/migrations
+      - ./libs/ledger/infrastructure/database/migrations/:/migrations
     networks:
       - postgres_net
     depends_on:
@@ -49,7 +49,7 @@ services:
       - GOOSE_VERBOSE=true
       - GOOSE_MIGRATION_DIR=/seed
     volumes:
-      - ./packages/integrations/postgres/seed:/seed
+      - ./libs/ledger/infrastructure/database/seed:/seed
     networks:
       - postgres_net
     depends_on:
