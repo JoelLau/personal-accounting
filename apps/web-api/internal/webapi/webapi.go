@@ -104,7 +104,7 @@ type ServerInterface interface {
 	// Balance and health check
 	// (GET /api/v1/accounting/accounts/info)
 	GetApiV1AccountingAccountsInfo(w http.ResponseWriter, r *http.Request)
-	// List all entriee
+	// List all entries
 	// (GET /api/v1/accounting/entries)
 	GetApiV1AccountingEntries(w http.ResponseWriter, r *http.Request)
 	// List all ledger accounts
@@ -144,7 +144,7 @@ func (_ Unimplemented) GetApiV1AccountingAccountsInfo(w http.ResponseWriter, r *
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// List all entriee
+// List all entries
 // (GET /api/v1/accounting/entries)
 func (_ Unimplemented) GetApiV1AccountingEntries(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
@@ -659,7 +659,7 @@ type StrictServerInterface interface {
 	// Balance and health check
 	// (GET /api/v1/accounting/accounts/info)
 	GetApiV1AccountingAccountsInfo(ctx context.Context, request GetApiV1AccountingAccountsInfoRequestObject) (GetApiV1AccountingAccountsInfoResponseObject, error)
-	// List all entriee
+	// List all entries
 	// (GET /api/v1/accounting/entries)
 	GetApiV1AccountingEntries(ctx context.Context, request GetApiV1AccountingEntriesRequestObject) (GetApiV1AccountingEntriesResponseObject, error)
 	// List all ledger accounts

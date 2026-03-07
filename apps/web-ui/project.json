@@ -5,16 +5,22 @@
   "prefix": "app",
   "sourceRoot": "apps/web-ui/src",
   "tags": [],
-  "implicitDependencies": ["packages/integrations/api-spec"],
+  "implicitDependencies": [
+    "libs/ledger/infrastructure/api-contract"
+  ],
   "targets": {
     "build": {
       "executor": "@angular-devkit/build-angular:application",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
         "outputPath": "dist/apps/web-ui",
         "index": "apps/web-ui/src/index.html",
         "browser": "apps/web-ui/src/main.ts",
-        "polyfills": ["zone.js"],
+        "polyfills": [
+          "zone.js"
+        ],
         "tsConfig": "apps/web-ui/tsconfig.app.json",
         "inlineStyleLanguage": "scss",
         "assets": [
@@ -23,7 +29,9 @@
             "input": "apps/web-ui/public"
           }
         ],
-        "styles": ["apps/web-ui/src/styles.scss"],
+        "styles": [
+          "apps/web-ui/src/styles.scss"
+        ],
         "scripts": []
       },
       "configurations": {
@@ -76,7 +84,9 @@
     },
     "test": {
       "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "outputs": [
+        "{workspaceRoot}/coverage/{projectRoot}"
+      ],
       "options": {
         "jestConfig": "apps/web-ui/jest.config.ts"
       }

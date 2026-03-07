@@ -126,7 +126,7 @@ export class AccountingService extends BaseService {
   static readonly ApiV1AccountingEntriesGetPath = '/api/v1/accounting/entries';
 
   /**
-   * List all entriee.
+   * List all entries.
    *
    *
    *
@@ -143,7 +143,7 @@ export class AccountingService extends BaseService {
   }
 
   /**
-   * List all entriee.
+   * List all entries.
    *
    *
    *
