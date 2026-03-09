@@ -132,11 +132,7 @@ SET
 WHERE
   id = $1
 RETURNING
-  id,
-  description,
-  system_notes,
-  transacted_at,
-  source_hash
+  id, description, system_notes, transacted_at, source_hash
 `
 
 type UpdatePostingParams struct {

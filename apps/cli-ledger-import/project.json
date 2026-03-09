@@ -11,7 +11,7 @@
         "main": "{projectRoot}/main.go"
       }
     },
-    "serve": {
+    "execute": {
       "executor": "@nx-go/nx-go:serve",
       "options": {
         "main": "{projectRoot}/main.go"

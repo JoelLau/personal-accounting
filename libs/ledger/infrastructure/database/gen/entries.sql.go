@@ -12,17 +12,10 @@ import (
 )
 
 const createEntry = `-- name: CreateEntry :one
-INSERT INTO entries (
-  description
-  , system_notes
-  , postings_id
-  , ledger_accounts_id
-  , debit_microsgd
-  , credit_microsgd
-) VALUES (
-  $1, $2, $3, $4, $5, $6
-)
-RETURNING id, description, system_notes, postings_id, ledger_accounts_id, debit_microsgd, credit_microsgd
+INSERT INTO entries(description, system_notes, postings_id, ledger_accounts_id, debit_microsgd, credit_microsgd)
+  VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING
+  id, description, system_notes, postings_id, ledger_accounts_id, debit_microsgd, credit_microsgd
 `
 
 type CreateEntryParams struct {
@@ -66,14 +59,24 @@ func (q *Queries) DeleteEntry(ctx context.Context, id int64) error {
 	return err
 }
 
-const getEntry = `-- name: GetEntry :one
-SELECT id, description, system_notes, postings_id, ledger_accounts_id, debit_microsgd, credit_microsgd
-FROM entries
-WHERE id = $1 LIMIT 1
+const getEntryByID = `-- name: GetEntryByID :one
+SELECT
+  id,
+  description,
+  system_notes,
+  postings_id,
+  ledger_accounts_id,
+  debit_microsgd,
+  credit_microsgd
+FROM
+  entries
+WHERE
+  id = $1
+LIMIT 1
 `
 
-func (q *Queries) GetEntry(ctx context.Context, id int64) (Entry, error) {
-	row := q.db.QueryRow(ctx, getEntry, id)
+func (q *Queries) GetEntryByID(ctx context.Context, id int64) (Entry, error) {
+	row := q.db.QueryRow(ctx, getEntryByID, id)
 	var i Entry
 	err := row.Scan(
 		&i.ID,
@@ -88,8 +91,16 @@ func (q *Queries) GetEntry(ctx context.Context, id int64) (Entry, error) {
 }
 
 const listEntries = `-- name: ListEntries :many
-SELECT id, description, system_notes, postings_id, ledger_accounts_id, debit_microsgd, credit_microsgd
-FROM entries
+SELECT
+  id,
+  description,
+  system_notes,
+  postings_id,
+  ledger_accounts_id,
+  debit_microsgd,
+  credit_microsgd
+FROM
+  entries
 `
 
 func (q *Queries) ListEntries(ctx context.Context) ([]Entry, error) {
@@ -120,16 +131,38 @@ func (q *Queries) ListEntries(ctx context.Context) ([]Entry, error) {
 	return items, nil
 }
 
-const updateEntry = `-- name: UpdateEntry :one
-UPDATE entries
+const setEntryLedgerAccount = `-- name: SetEntryLedgerAccount :exec
+UPDATE
+  entries
 SET
-  description = $2
-  , system_notes = $3
-  , ledger_accounts_id = $4
-  , debit_microsgd = $5
-  , credit_microsgd = $6
-WHERE id = $1
-RETURNING id, description, system_notes, postings_id, ledger_accounts_id, debit_microsgd, credit_microsgd
+  ledger_accounts_id = $1
+WHERE
+  id = $2
+`
+
+type SetEntryLedgerAccountParams struct {
+	LedgerAccountsID int64 `json:"ledger_accounts_id"`
+	ID               int64 `json:"id"`
+}
+
+func (q *Queries) SetEntryLedgerAccount(ctx context.Context, arg SetEntryLedgerAccountParams) error {
+	_, err := q.db.Exec(ctx, setEntryLedgerAccount, arg.LedgerAccountsID, arg.ID)
+	return err
+}
+
+const updateEntry = `-- name: UpdateEntry :exec
+UPDATE
+  entries
+SET
+  description = $2,
+  system_notes = $3,
+  ledger_accounts_id = $4,
+  debit_microsgd = $5,
+  credit_microsgd = $6
+WHERE
+  id = $1
+RETURNING
+  id, description, system_notes, postings_id, ledger_accounts_id, debit_microsgd, credit_microsgd
 `
 
 type UpdateEntryParams struct {
@@ -141,8 +174,8 @@ type UpdateEntryParams struct {
 	CreditMicrosgd   int64       `json:"credit_microsgd"`
 }
 
-func (q *Queries) UpdateEntry(ctx context.Context, arg UpdateEntryParams) (Entry, error) {
-	row := q.db.QueryRow(ctx, updateEntry,
+func (q *Queries) UpdateEntry(ctx context.Context, arg UpdateEntryParams) error {
+	_, err := q.db.Exec(ctx, updateEntry,
 		arg.ID,
 		arg.Description,
 		arg.SystemNotes,
@@ -150,15 +183,5 @@ func (q *Queries) UpdateEntry(ctx context.Context, arg UpdateEntryParams) (Entry
 		arg.DebitMicrosgd,
 		arg.CreditMicrosgd,
 	)
-	var i Entry
-	err := row.Scan(
-		&i.ID,
-		&i.Description,
-		&i.SystemNotes,
-		&i.PostingsID,
-		&i.LedgerAccountsID,
-		&i.DebitMicrosgd,
-		&i.CreditMicrosgd,
-	)
-	return i, err
+	return err
 }

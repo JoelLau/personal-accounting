@@ -169,7 +169,7 @@ export class DashboardPageComponent {
           // Apply dynamic padding to the first column or name column
           cellStyle: (params) => {
             console.log(params.data);
-            const depth = (params.data as any)?.depth || 0;
+            const depth = (params.data)?.depth || 0;
             return {
               'padding-left': `${depth * 2}rem`,
               display: 'flex',

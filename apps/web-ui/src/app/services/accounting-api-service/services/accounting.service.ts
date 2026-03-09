@@ -29,6 +29,8 @@ import { Entry } from '../models/entry';
 import { LedgerAccount } from '../models/ledger-account';
 import { Posting } from '../models/posting';
 import { Transaction } from '../models/transaction';
+import { updateAccountingEntry } from '../fn/accounting/update-accounting-entry';
+import { UpdateAccountingEntry$Params } from '../fn/accounting/update-accounting-entry';
 
 @Injectable({ providedIn: 'root' })
 export class AccountingService extends BaseService {
@@ -161,6 +163,45 @@ export class AccountingService extends BaseService {
 'data'?: Array<Entry>;
 }>): {
 'data'?: Array<Entry>;
+} => r.body)
+    );
+  }
+
+  /** Path part for operation `updateAccountingEntry()` */
+  static readonly UpdateAccountingEntryPath = '/api/v1/accounting/entries/{entry_id}';
+
+  /**
+   * Partial update of a ledger entry.
+   *
+   *
+   *
+   * This method provides access to the full `HttpResponse`, allowing access to response headers.
+   * To access only the response body, use `updateAccountingEntry()` instead.
+   *
+   * This method sends `application/json` and handles request body of type `application/json`.
+   */
+  updateAccountingEntry$Response(params: UpdateAccountingEntry$Params, context?: HttpContext): Observable<StrictHttpResponse<{
+}>> {
+    const obs = updateAccountingEntry(this.http, this.rootUrl, params, context);
+    return obs;
+  }
+
+  /**
+   * Partial update of a ledger entry.
+   *
+   *
+   *
+   * This method provides access only to the response body.
+   * To access the full response (for headers, for example), `updateAccountingEntry$Response()` instead.
+   *
+   * This method sends `application/json` and handles request body of type `application/json`.
+   */
+  updateAccountingEntry(params: UpdateAccountingEntry$Params, context?: HttpContext): Observable<{
+}> {
+    const resp = this.updateAccountingEntry$Response(params, context);
+    return resp.pipe(
+      map((r: StrictHttpResponse<{
+}>): {
 } => r.body)
     );
   }

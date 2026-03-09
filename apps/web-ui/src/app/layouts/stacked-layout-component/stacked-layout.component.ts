@@ -7,4 +7,4 @@ import { RouterModule } from '@angular/router';
   imports: [CommonModule, RouterModule],
   templateUrl: './stacked-layout.component.html',
 })
-export class StackedLayoutComponent {}
+export class StackedLayoutComponent { }

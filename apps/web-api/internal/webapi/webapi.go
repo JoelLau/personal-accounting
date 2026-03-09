@@ -37,6 +37,24 @@ type Entry struct {
 	SystemNotes      string `json:"system_notes"`
 }
 
+// ErrorResponse defines model for ErrorResponse.
+type ErrorResponse struct {
+	// Detail A human-readable explanation specific to this occurence.
+	Detail *string `json:"detail,omitempty"`
+
+	// Instance A URI reference for this specific occurence (e.g. trace ID)
+	Instance *string `json:"instance,omitempty"`
+
+	// Status The HTTP status code generated for this occurrence.
+	Status string `json:"status"`
+
+	// Title A short, human-readable summary of the problem
+	Title string `json:"title"`
+
+	// Type A URI reference that identifies the problem type.
+	Type string `json:"type"`
+}
+
 // LedgerAccount Double-entry accounting charter of accounts
 type LedgerAccount struct {
 	Description   string  `json:"description"`
@@ -90,6 +108,9 @@ type PutApiV1AccountingTransactionsTransactionIdJSONBody struct {
 	Entries     []TransactionEntry `json:"entries"`
 }
 
+// UpdateAccountingEntryJSONRequestBody defines body for UpdateAccountingEntry for application/json ContentType.
+type UpdateAccountingEntryJSONRequestBody = Entry
+
 // PutApiV1AccountingTransactionsTransactionIdJSONRequestBody defines body for PutApiV1AccountingTransactionsTransactionId for application/json ContentType.
 type PutApiV1AccountingTransactionsTransactionIdJSONRequestBody PutApiV1AccountingTransactionsTransactionIdJSONBody
 
@@ -107,6 +128,9 @@ type ServerInterface interface {
 	// List all entries
 	// (GET /api/v1/accounting/entries)
 	GetApiV1AccountingEntries(w http.ResponseWriter, r *http.Request)
+	// Partial update of a ledger entry
+	// (PUT /api/v1/accounting/entries/{entry_id})
+	UpdateAccountingEntry(w http.ResponseWriter, r *http.Request, entryId string)
 	// List all ledger accounts
 	// (GET /api/v1/accounting/ledger_accounts)
 	GetApiV1AccountingLedgerAccounts(w http.ResponseWriter, r *http.Request)
@@ -147,6 +171,12 @@ func (_ Unimplemented) GetApiV1AccountingAccountsInfo(w http.ResponseWriter, r *
 // List all entries
 // (GET /api/v1/accounting/entries)
 func (_ Unimplemented) GetApiV1AccountingEntries(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Partial update of a ledger entry
+// (PUT /api/v1/accounting/entries/{entry_id})
+func (_ Unimplemented) UpdateAccountingEntry(w http.ResponseWriter, r *http.Request, entryId string) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -236,6 +266,31 @@ func (siw *ServerInterfaceWrapper) GetApiV1AccountingEntries(w http.ResponseWrit
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetApiV1AccountingEntries(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateAccountingEntry operation middleware
+func (siw *ServerInterfaceWrapper) UpdateAccountingEntry(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "entry_id" -------------
+	var entryId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "entry_id", chi.URLParam(r, "entry_id"), &entryId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "entry_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateAccountingEntry(w, r, entryId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -473,6 +528,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/api/v1/accounting/entries", wrapper.GetApiV1AccountingEntries)
 	})
 	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/api/v1/accounting/entries/{entry_id}", wrapper.UpdateAccountingEntry)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/accounting/ledger_accounts", wrapper.GetApiV1AccountingLedgerAccounts)
 	})
 	r.Group(func(r chi.Router) {
@@ -557,6 +615,51 @@ type GetApiV1AccountingEntries200JSONResponse struct {
 func (response GetApiV1AccountingEntries200JSONResponse) VisitGetApiV1AccountingEntriesResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateAccountingEntryRequestObject struct {
+	EntryId string `json:"entry_id"`
+	Body    *UpdateAccountingEntryJSONRequestBody
+}
+
+type UpdateAccountingEntryResponseObject interface {
+	VisitUpdateAccountingEntryResponse(w http.ResponseWriter) error
+}
+
+type UpdateAccountingEntry200JSONResponse map[string]interface{}
+
+func (response UpdateAccountingEntry200JSONResponse) VisitUpdateAccountingEntryResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateAccountingEntry400JSONResponse ErrorResponse
+
+func (response UpdateAccountingEntry400JSONResponse) VisitUpdateAccountingEntryResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateAccountingEntry404JSONResponse ErrorResponse
+
+func (response UpdateAccountingEntry404JSONResponse) VisitUpdateAccountingEntryResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateAccountingEntry500JSONResponse ErrorResponse
+
+func (response UpdateAccountingEntry500JSONResponse) VisitUpdateAccountingEntryResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -662,6 +765,9 @@ type StrictServerInterface interface {
 	// List all entries
 	// (GET /api/v1/accounting/entries)
 	GetApiV1AccountingEntries(ctx context.Context, request GetApiV1AccountingEntriesRequestObject) (GetApiV1AccountingEntriesResponseObject, error)
+	// Partial update of a ledger entry
+	// (PUT /api/v1/accounting/entries/{entry_id})
+	UpdateAccountingEntry(ctx context.Context, request UpdateAccountingEntryRequestObject) (UpdateAccountingEntryResponseObject, error)
 	// List all ledger accounts
 	// (GET /api/v1/accounting/ledger_accounts)
 	GetApiV1AccountingLedgerAccounts(ctx context.Context, request GetApiV1AccountingLedgerAccountsRequestObject) (GetApiV1AccountingLedgerAccountsResponseObject, error)
@@ -797,6 +903,39 @@ func (sh *strictHandler) GetApiV1AccountingEntries(w http.ResponseWriter, r *htt
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetApiV1AccountingEntriesResponseObject); ok {
 		if err := validResponse.VisitGetApiV1AccountingEntriesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateAccountingEntry operation middleware
+func (sh *strictHandler) UpdateAccountingEntry(w http.ResponseWriter, r *http.Request, entryId string) {
+	var request UpdateAccountingEntryRequestObject
+
+	request.EntryId = entryId
+
+	var body UpdateAccountingEntryJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateAccountingEntry(ctx, request.(UpdateAccountingEntryRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateAccountingEntry")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateAccountingEntryResponseObject); ok {
+		if err := validResponse.VisitUpdateAccountingEntryResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

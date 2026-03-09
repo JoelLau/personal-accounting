@@ -9,7 +9,17 @@
       "executor": "@nx-go/nx-go:test"
     },
     "lint": {
+      "executor": "nx:noop",
+      "dependsOn": [
+        "lint:go",
+        "lint:sql"
+      ]
+    },
+    "lint:go": {
       "executor": "@nx-go/nx-go:lint"
+    },
+    "lint:sql": {
+      "executor": "nx:noop"
     },
     "tidy": {
       "executor": "@nx-go/nx-go:tidy"
@@ -20,9 +30,23 @@
         "sqlc:generate"
       ]
     },
+    "sqlc:clean": {
+      "executor": "nx:run-commands",
+      "dependsOn": [
+        "migrate"
+      ],
+      "options": {
+        "command": "rm -rf gen/*",
+        "cwd": "{projectRoot}"
+      },
+      "outputs": [
+        "{projectRoot}/dbgen/"
+      ]
+    },
     "sqlc:generate": {
       "executor": "nx:run-commands",
       "dependsOn": [
+        "sqlc:clean",
         "migrate"
       ],
       "options": {

@@ -41,11 +41,7 @@ SET
 WHERE
   id = $1
 RETURNING
-  id,
-  description,
-  system_notes,
-  transacted_at,
-  source_hash;
+  *;
 
 -- name: DeletePosting :exec
 DELETE FROM postings

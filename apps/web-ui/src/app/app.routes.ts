@@ -1,6 +1,6 @@
 import { Route } from '@angular/router';
-import { StackedLayoutComponent } from './web-ui/layouts/stacked-layout/stacked-layout.component';
-import { AccountsPageComponent } from './web-ui/pages/accounts-page/accounts-page.component';
+import { StackedLayoutComponent } from './layouts/stacked-layout-component/stacked-layout.component';
+import { TransactionsPageComponentComponent } from './pages/transactions-page-component/transactions-page-component.component';
 
 export const appRoutes: Route[] = [
   {
@@ -8,17 +8,17 @@ export const appRoutes: Route[] = [
     component: StackedLayoutComponent,
     children: [
       {
-        path: '',
-        component: AccountsPageComponent,
+        path: 'transactions',
+        component: TransactionsPageComponentComponent,
       },
       {
         path: '**',
-        redirectTo: '',
+        redirectTo: 'transactions',
       },
     ],
   },
   {
     path: '**',
-    redirectTo: '',
+    redirectTo: 'transactions',
   },
 ];

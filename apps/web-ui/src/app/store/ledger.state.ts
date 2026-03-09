@@ -1,13 +1,13 @@
 import { inject, Injectable } from '@angular/core';
 import { Action, Selector, State, StateContext } from '@ngxs/store';
-import { forkJoin, tap } from 'rxjs';
+import { forkJoin, switchMap, tap } from 'rxjs';
 import { AccountingService } from '../services/accounting-api-service/services';
 import {
   Entry,
   LedgerAccount,
   Posting,
 } from '../services/accounting-api-service/models';
-import { FetchLedgerData } from './ledger.actions';
+import { FetchLedgerData, UpdateEntry } from './ledger.actions';
 
 export interface LedgerStateModel {
   accounts: { [id: string]: LedgerAccount };
@@ -17,6 +17,10 @@ export interface LedgerStateModel {
 
 export interface LedgerAccountWithChildren extends LedgerAccount {
   children: LedgerAccountWithChildren[];
+}
+
+export interface Transaction extends Posting {
+  entries: { [id: string]: Entry };
 }
 
 @State<LedgerStateModel>({
@@ -42,8 +46,30 @@ export class LedgerState {
   }
 
   @Selector()
-  static GetEntries({ entries }: LedgerStateModel) {
+  static getEntries({ entries }: LedgerStateModel) {
     return entries;
+  }
+
+  @Selector()
+  static getTransactions({
+    postings,
+    entries,
+  }: LedgerStateModel): Record<string, Transaction> {
+    const entriesByPostingId = Object.values(entries).reduce((prev, curr) => {
+      if (!prev[curr.postings_id]) {
+        prev[curr.postings_id] = {};
+      }
+      prev[curr.postings_id][curr.id] = curr;
+      return prev;
+    }, {} as { [parentId: string]: Record<string, Entry> });
+
+    return Object.entries(postings).reduce((prev, [postingID, posting]) => {
+      prev[postingID] = {
+        ...posting,
+        entries: entriesByPostingId[postingID],
+      };
+      return prev;
+    }, {} as { [id: string]: Transaction });
   }
 
   @Action(FetchLedgerData)
@@ -53,9 +79,6 @@ export class LedgerState {
       postings: this.accounting.apiV1AccountingPostingsGet(),
       entries: this.accounting.apiV1AccountingEntriesGet(),
     }).pipe(
-      tap((data) => {
-        console.log(data);
-      }),
       tap(({ accounts, postings, entries }) => {
         ctx.patchState({
           accounts: accounts.data?.reduce((prev, curr) => {
@@ -73,5 +96,20 @@ export class LedgerState {
         });
       })
     );
+  }
+
+  @Action(UpdateEntry)
+  updateEntry(ctx: StateContext<LedgerStateModel>, param: UpdateEntry) {
+    return this.accounting
+      .updateAccountingEntry({
+        entry_id: param.entryId,
+        body: param.body,
+      })
+      .pipe(
+        tap((response) => console.log(response)),
+        switchMap(() => {
+          return ctx.dispatch(FetchLedgerData);
+        })
+      );
   }
 }

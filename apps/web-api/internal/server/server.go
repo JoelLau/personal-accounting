@@ -3,10 +3,13 @@ package server
 import (
 	"apps/web-api/internal/webapi"
 	"context"
+	"fmt"
 	dbgen "libs/ledger/infrastructure/database/gen"
 	"log/slog"
 	"strconv"
+	"strings"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/oapi-codegen/runtime/types"
 	"github.com/shopspring/decimal"
@@ -103,6 +106,75 @@ func (s *Server) GetApiV1AccountingPostings(ctx context.Context, request webapi.
 	}
 
 	return webapi.GetApiV1AccountingPostings200JSONResponse{Data: &data}, nil
+}
+
+var mil = decimal.NewFromInt(1_000_000)
+
+// (PUT /api/v1/accounting/entries/:entry_id)
+func (s *Server) UpdateAccountingEntry(ctx context.Context, request webapi.UpdateAccountingEntryRequestObject) (webapi.UpdateAccountingEntryResponseObject, error) {
+	slog.InfoContext(ctx, "/api/v1/accounting/entries/:entry_id", slog.Any("request", request))
+
+	// validation
+	if request.Body == nil {
+		return webapi.UpdateAccountingEntry400JSONResponse{
+			Status: "400",
+			Title:  "Bad Request - invalid request body",
+		}, nil
+	}
+
+	body := *request.Body
+	entryID, err := strconv.ParseInt(request.EntryId, 10, 64)
+	if err != nil {
+		return webapi.UpdateAccountingEntry400JSONResponse{
+			Status: "400",
+			Title:  "Bad Request - 'entry_id' must be numeric (e.g. \"72\")",
+		}, nil
+	}
+
+	ledgerAccountsId, err := strconv.ParseInt(body.LedgerAccountsId, 10, 64)
+	if err != nil {
+		return webapi.UpdateAccountingEntry400JSONResponse{
+			Status: "400",
+			Title:  "Bad Request - 'ledger_accounts_id' must be numeric (e.g. \"72\")",
+		}, nil
+	}
+
+	if request.EntryId != body.Id {
+		return webapi.UpdateAccountingEntry400JSONResponse{
+			Status: "400",
+			Title:  fmt.Sprintf("Bad Request - entry id in url ('%s') does not match entry id found in body ('%s')", request.EntryId, body.Id),
+		}, nil
+	}
+
+	debit, err := decimal.NewFromString(strings.TrimSpace(strings.ReplaceAll(body.DebitAmount, ",", "")))
+	if err != nil {
+		return webapi.UpdateAccountingEntry400JSONResponse{
+			Status: "400",
+			Title:  fmt.Sprintf("Bad Request - debit_amount (%v) must be numeric (e.g. \"72.00\"): %v", body.DebitAmount, err),
+		}, nil
+	}
+
+	credit, err := decimal.NewFromString(strings.TrimSpace(strings.ReplaceAll(body.CreditAmount, ",", "")))
+	if err != nil {
+		return webapi.UpdateAccountingEntry400JSONResponse{
+			Status: "400",
+			Title:  fmt.Sprintf("Bad Request - credit_amount (%v) must be numeric (e.g. \"72.00\"): %v", body.CreditAmount, err),
+		}, nil
+	}
+
+	err = s.querier().UpdateEntry(ctx, dbgen.UpdateEntryParams(dbgen.UpdateEntryParams{
+		ID:               entryID,
+		Description:      pgtype.Text{String: body.Description, Valid: true},
+		SystemNotes:      pgtype.Text{String: "", Valid: false}, // WARN: this will clear system notes - we might need to do a pre-fetch for old values
+		LedgerAccountsID: ledgerAccountsId,
+		DebitMicrosgd:    debit.Mul(mil).IntPart(),
+		CreditMicrosgd:   credit.Mul(mil).IntPart(),
+	}))
+	if err != nil {
+		return nil, fmt.Errorf("failed to update database 'entry' object: %w", err)
+	}
+
+	return webapi.UpdateAccountingEntry200JSONResponse{}, nil
 }
 
 // Balance and health check

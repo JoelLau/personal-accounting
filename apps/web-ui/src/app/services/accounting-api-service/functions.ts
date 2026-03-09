@@ -11,6 +11,8 @@ export type { ApiV1AccountingPostingsGet$Params as ApiV1AccountingPostingsGet$Pa
 export { apiV1AccountingPostingsGet as apiV1AccountingPostingsGet } from './fn/accounting/api-v-1-accounting-postings-get';
 export type { ApiV1AccountingEntriesGet$Params as ApiV1AccountingEntriesGet$Params } from './fn/accounting/api-v-1-accounting-entries-get';
 export { apiV1AccountingEntriesGet as apiV1AccountingEntriesGet } from './fn/accounting/api-v-1-accounting-entries-get';
+export type { UpdateAccountingEntry$Params as UpdateAccountingEntry$Params } from './fn/accounting/update-accounting-entry';
+export { updateAccountingEntry as updateAccountingEntry } from './fn/accounting/update-accounting-entry';
 export type { ApiV1AccountingTransactionsGet$Params as ApiV1AccountingTransactionsGet$Params } from './fn/accounting/api-v-1-accounting-transactions-get';
 export { apiV1AccountingTransactionsGet as apiV1AccountingTransactionsGet } from './fn/accounting/api-v-1-accounting-transactions-get';
 export type { ApiV1AccountingTransactionsPost$Params as ApiV1AccountingTransactionsPost$Params } from './fn/accounting/api-v-1-accounting-transactions-post';

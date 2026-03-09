@@ -16,7 +16,7 @@ func Init(ctx context.Context) Config {
 		DebugMode: true,
 	}
 
-	err := godotenv.Load(".env")
+	err := godotenv.Load()
 	if err != nil {
 		err = fmt.Errorf("failed to load environment variables: %w", err)
 		panic(err)

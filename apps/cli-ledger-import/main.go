@@ -74,7 +74,7 @@ func main() {
 func setup() (Config, error) {
 	slogger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{AddSource: true, Level: slog.LevelDebug}))
 
-	err := godotenv.Load()
+	err := godotenv.Load(".env")
 	if err != nil {
 		return Config{}, fmt.Errorf("failed to load environment variables, %w", err)
 	}

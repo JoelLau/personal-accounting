@@ -12,14 +12,10 @@ import (
 )
 
 const createLedgerAccount = `-- name: CreateLedgerAccount :one
-INSERT INTO ledger_accounts (
-  name,
-  description,
-  parent_id
-) VALUES (
-  $1, $2, $3
-)
-RETURNING id, name, description, parent_id
+INSERT INTO ledger_accounts(name, description, parent_id)
+  VALUES ($1, $2, $3)
+RETURNING
+  id, name, description, parent_id
 `
 
 type CreateLedgerAccountParams struct {
@@ -51,9 +47,16 @@ func (q *Queries) DeleteLedgerAccount(ctx context.Context, id int64) error {
 }
 
 const getLedgerAccount = `-- name: GetLedgerAccount :one
-SELECT id, name, description, parent_id 
-FROM ledger_accounts
-WHERE id = $1 LIMIT 1
+SELECT
+  id,
+  name,
+  description,
+  parent_id
+FROM
+  ledger_accounts
+WHERE
+  id = $1
+LIMIT 1
 `
 
 func (q *Queries) GetLedgerAccount(ctx context.Context, id int64) (LedgerAccount, error) {
@@ -70,33 +73,42 @@ func (q *Queries) GetLedgerAccount(ctx context.Context, id int64) (LedgerAccount
 
 const listLedgerAccounts = `-- name: ListLedgerAccounts :many
 WITH RECURSIVE account_tree AS (
-    -- Base Case: Select root accounts
-    SELECT 
-        id,
-        name,
-        description,
-        parent_id,
-        name::TEXT AS qualified_name,
-        1 AS level
-    FROM ledger_accounts
-    WHERE parent_id IS NULL
-
-    UNION ALL
-
-    -- Recursive Step: Join children to parents
-    SELECT 
-        child.id,
-        child.name,
-        child.description,
-        child.parent_id,
-        (parent.qualified_name || ':' || child.name)::TEXT AS qualified_name,
-        parent.level + 1 AS level
-    FROM ledger_accounts child
+  -- Base Case: Select root accounts
+  SELECT
+    id,
+    name,
+    description,
+    parent_id,
+    name::text AS qualified_name,
+    1 AS level
+  FROM
+    ledger_accounts
+  WHERE
+    parent_id IS NULL
+  UNION ALL
+  -- Recursive Step: Join children to parents
+  SELECT
+    child.id,
+    child.name,
+    child.description,
+    child.parent_id,
+(parent.qualified_name || ':' || child.name)::text AS qualified_name,
+    parent.level + 1 AS level
+  FROM
+    ledger_accounts child
     JOIN account_tree parent ON child.parent_id = parent.id
 )
-SELECT id, name, qualified_name, description, parent_id, level
-FROM account_tree 
-ORDER BY qualified_name
+SELECT
+  id,
+  name,
+  qualified_name,
+  description,
+  parent_id,
+  level
+FROM
+  account_tree
+ORDER BY
+  qualified_name
 `
 
 type ListLedgerAccountsRow struct {
@@ -136,13 +148,19 @@ func (q *Queries) ListLedgerAccounts(ctx context.Context) ([]ListLedgerAccountsR
 }
 
 const updateLedgerAccount = `-- name: UpdateLedgerAccount :one
-UPDATE ledger_accounts
+UPDATE
+  ledger_accounts
 SET
   name = $2,
   description = $3,
   parent_id = $4
-WHERE id = $1
-RETURNING id, name, description, parent_id
+WHERE
+  id = $1
+RETURNING
+  id,
+  name,
+  description,
+  parent_id
 `
 
 type UpdateLedgerAccountParams struct {
