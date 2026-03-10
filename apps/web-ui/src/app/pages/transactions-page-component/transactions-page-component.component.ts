@@ -7,10 +7,11 @@ import {
   ReactiveFormsModule,
 } from '@angular/forms';
 import { Store } from '@ngxs/store';
-import { BehaviorSubject, combineLatest, map, startWith } from 'rxjs';
+import { BehaviorSubject, combineLatest, map, startWith, take } from 'rxjs';
 import { Entry, Posting } from '../../services/accounting-api-service/models';
 import { UpdateEntry } from '../../store/ledger.actions';
 import { LedgerState } from '../../store/ledger.state';
+import { AccountingService } from '../../services/accounting-api-service/services';
 
 @Component({
   selector: 'app-transactions-page-component',
@@ -19,6 +20,7 @@ import { LedgerState } from '../../store/ledger.state';
 })
 export class TransactionsPageComponentComponent {
   private readonly state = inject(Store);
+  private readonly accounting = inject(AccountingService);
 
   private _rowStates = new BehaviorSubject<{ [posting_id: string]: RowState }>(
     {}
@@ -29,12 +31,14 @@ export class TransactionsPageComponentComponent {
 
   accounts$ = this.accountsById$.pipe(
     map((accountsById) => {
-      return Object.values(accountsById);
+      return Object.values(accountsById).sort((a, b) =>
+        a.qualified_name.localeCompare(b.qualified_name)
+      );
     })
   );
 
   formGroup = new FormGroup({
-    transactionsType: new FormControl('all', { nonNullable: true }),
+    transactionsType: new FormControl('expenses', { nonNullable: true }),
   });
 
   rows$ = combineLatest({
@@ -42,7 +46,7 @@ export class TransactionsPageComponentComponent {
     rowState: this.rowState$,
     transactions: this.state.select(LedgerState.getTransactions),
     tab: this.formGroup.controls.transactionsType.valueChanges.pipe(
-      startWith('all')
+      startWith(this.formGroup.controls.transactionsType.value)
     ),
   }).pipe(
     map(({ accounts, rowState, transactions, tab }): TableRow[] => {
@@ -139,7 +143,39 @@ export class TransactionsPageComponentComponent {
       [field]: `${newValue}`, // WARN: temporary workaround
     };
 
-    this.state.dispatch(new UpdateEntry(entryId, entry));
+    this.state.dispatch(new UpdateEntry(entryId, entry)).subscribe(() => {
+      console.log('entry updated');
+    });
+  }
+
+  onDeleteButtonClick(entryId: string) {
+    this.accounting
+      .deleteEntry({ entry_id: entryId })
+      .pipe(take(1))
+      .subscribe((response) => {
+        console.log(response);
+      });
+  }
+
+  onAddEntryButtonClick(postingId: string) {
+    const postingsById = this.state.selectSnapshot(LedgerState.getPostings);
+    const posting = postingsById[postingId];
+
+    const entry = {
+      credit_amount: '0',
+      debit_amount: '1.0',
+      description: posting.description,
+      postings_id: postingId,
+      ledger_accounts_id: '4000',
+      system_notes: posting.system_notes,
+    };
+
+    this.accounting
+      .createEntry({ body: entry })
+      .pipe(take(1))
+      .subscribe((response) => {
+        console.log(response);
+      });
   }
 }
 

@@ -9,13 +9,13 @@ import { RequestBuilder } from '../../request-builder';
 
 import { Entry } from '../../models/entry';
 
-export interface ApiV1AccountingEntriesGet$Params {
+export interface GetEntries$Params {
 }
 
-export function apiV1AccountingEntriesGet(http: HttpClient, rootUrl: string, params?: ApiV1AccountingEntriesGet$Params, context?: HttpContext): Observable<StrictHttpResponse<{
+export function getEntries(http: HttpClient, rootUrl: string, params?: GetEntries$Params, context?: HttpContext): Observable<StrictHttpResponse<{
 'data'?: Array<Entry>;
 }>> {
-  const rb = new RequestBuilder(rootUrl, apiV1AccountingEntriesGet.PATH, 'get');
+  const rb = new RequestBuilder(rootUrl, getEntries.PATH, 'get');
   if (params) {
   }
 
@@ -31,4 +31,4 @@ export function apiV1AccountingEntriesGet(http: HttpClient, rootUrl: string, par
   );
 }
 
-apiV1AccountingEntriesGet.PATH = '/api/v1/accounting/entries';
+getEntries.PATH = '/api/v1/accounting/entries';

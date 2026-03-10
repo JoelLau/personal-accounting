@@ -2,11 +2,21 @@
 
 <form [formGroup]="formGroup" style="display: flex">
   <div>
-    <input type="radio" formControlName="transactionsType" id="radio-all" value="all" />
+    <input
+      type="radio"
+      formControlName="transactionsType"
+      id="radio-all"
+      value="all"
+    />
     <label for="radio-all">All</label>
   </div>
   <div>
-    <input type="radio" formControlName="transactionsType" id="radio-expenses" value="expenses" />
+    <input
+      type="radio"
+      formControlName="transactionsType"
+      id="radio-expenses"
+      value="expenses"
+    />
     <label for="radio-expenses">Expenses</label>
   </div>
 </form>
@@ -20,7 +30,10 @@
 <br />
 <br />
 
-<table *ngIf="accounts$ | async as accounts; else loading" style="width: 90%; border-collapse: collapse">
+<table
+  *ngIf="accounts$ | async as accounts; else loading"
+  style="width: 90%; border-collapse: collapse"
+>
   <thead>
     <tr>
       <th style="text-align: left; width: 6rem">Date</th>
@@ -28,15 +41,22 @@
       <th style="text-align: left">Category</th>
       <th style="text-align: right">Debit</th>
       <th style="text-align: right">Credit</th>
+      <th style="text-align: right">Actions</th>
     </tr>
   </thead>
   <ng-container *ngIf="rows$ | async as rows; else loading">
     <tbody *ngFor="let row of rows; trackBy: trackByIdField">
-      <tr *ngIf="row.entries.length" style="cursor: pointer" (click)="toggleRow(row.id)">
+      <tr *ngIf="row.entries.length">
         <td class="date">{{ row.transacted_at }}</td>
         <td class="description">
-          <span class="caret"> {{ row.isExpanded ? '▼' : '▶' }}&nbsp; </span>
-          <span>
+          <button
+            class="caret"
+            (click)="toggleRow(row.id)"
+            style="cursor: pointer"
+          >
+            {{ row.isExpanded ? '▼' : '▶' }}
+          </button>
+          <span style="padding-left: 0.5rem">
             {{ row.description }}
           </span>
           <span style="color: gray">({{ row.entries.length }})</span>
@@ -48,20 +68,33 @@
         <td class="credit" style="text-align: right">
           {{ row.credit | currency : ' ' }}
         </td>
+        <td class="actions" style="text-align: right">
+          <button (click)="onAddEntryButtonClick(row.id)">Add Entry</button>
+        </td>
       </tr>
+
       <ng-container *ngIf="row.isExpanded">
-        <ng-container *ngFor="let entry of row.entries; trackBy: trackByIdField">
+        <ng-container
+          *ngFor="let entry of row.entries; trackBy: trackByIdField"
+        >
           <tr style="cursor: pointer">
             <td class="date"></td>
             <td class="description" style="padding-left: 2rem">
               {{ entry.description }}
             </td>
             <td class="category" style="text-align: left">
-              <select [id]="`category-${entry.id}`" [name]="`category-${entry.id}`"
-                [(ngModel)]="entry.ledger_accounts_id" (ngModelChange)="
+              <select
+                [id]="`category-${entry.id}`"
+                [name]="`category-${entry.id}`"
+                [(ngModel)]="entry.ledger_accounts_id"
+                (ngModelChange)="
                   onEntryChange(entry.id, 'ledger_accounts_id', $event)
-                ">
-                <ng-container *ngFor="let account of accounts; trackBy: trackByIdField">
+                "
+              >
+                <option value="" disabled>Select a category</option>
+                <ng-container
+                  *ngFor="let account of accounts; trackBy: trackByIdField"
+                >
                   <option [value]="account.id">
                     {{ account.qualified_name }}
                   </option>
@@ -69,14 +102,29 @@
               </select>
             </td>
             <td class="debit" style="text-align: right">
-              <input type="number" [(ngModel)]="entry.debit_amount" (ngModelChange)="
+              <input
+                type="number"
+                [(ngModel)]="entry.debit_amount"
+                (ngModelChange)="
                   onEntryChange(entry.id, 'debit_amount', $event)
-                " step=".01" style="text-align: right" />
+                "
+                step=".01"
+                style="text-align: right"
+              />
             </td>
             <td class="credit" style="text-align: right">
-              <input type="number" [(ngModel)]="entry.credit_amount" (ngModelChange)="
+              <input
+                type="number"
+                [(ngModel)]="entry.credit_amount"
+                (ngModelChange)="
                   onEntryChange(entry.id, 'credit_amount', $event)
-                " step=".01" style="text-align: right" />
+                "
+                step=".01"
+                style="text-align: right"
+              />
+            </td>
+            <td class="actions" style="text-align: right">
+              <button (click)="onDeleteButtonClick(entry.id)">Delete</button>
             </td>
           </tr>
         </ng-container>
@@ -88,3 +136,4 @@
 <ng-template #loading>
   <p>loading...</p>
 </ng-template>
+

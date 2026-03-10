@@ -2,7 +2,7 @@
 INSERT INTO entries(description, system_notes, postings_id, ledger_accounts_id, debit_microsgd, credit_microsgd)
   VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING
-  id, description, system_notes, postings_id, ledger_accounts_id, debit_microsgd, credit_microsgd;
+  *;
 
 -- name: GetEntryByID :one
 SELECT

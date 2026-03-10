@@ -47,6 +47,7 @@ export class LedgerState {
 
   @Selector()
   static getEntries({ entries }: LedgerStateModel) {
+    console.log(entries);
     return entries;
   }
 
@@ -77,9 +78,10 @@ export class LedgerState {
     return forkJoin({
       accounts: this.accounting.apiV1AccountingLedgerAccountsGet(),
       postings: this.accounting.apiV1AccountingPostingsGet(),
-      entries: this.accounting.apiV1AccountingEntriesGet(),
+      entries: this.accounting.getEntries(),
     }).pipe(
       tap(({ accounts, postings, entries }) => {
+        console.log(entries);
         ctx.patchState({
           accounts: accounts.data?.reduce((prev, curr) => {
             prev[curr.id] = curr;
@@ -101,7 +103,7 @@ export class LedgerState {
   @Action(UpdateEntry)
   updateEntry(ctx: StateContext<LedgerStateModel>, param: UpdateEntry) {
     return this.accounting
-      .updateAccountingEntry({
+      .updateEntry({
         entry_id: param.entryId,
         body: param.body,
       })

@@ -9,20 +9,24 @@ import { RequestBuilder } from '../../request-builder';
 
 import { Entry } from '../../models/entry';
 
-export interface UpdateAccountingEntry$Params {
-  entry_id: string;
+export interface CreateEntry$Params {
   
     /**
-     * replace entry object with new values
+     * create entry
      */
-    body?: Entry
+    body: {
+'description': string;
+'system_notes': string;
+'ledger_accounts_id': string;
+'postings_id': string;
+'debit_amount': string;
+'credit_amount': string;
+}
 }
 
-export function updateAccountingEntry(http: HttpClient, rootUrl: string, params: UpdateAccountingEntry$Params, context?: HttpContext): Observable<StrictHttpResponse<{
-}>> {
-  const rb = new RequestBuilder(rootUrl, updateAccountingEntry.PATH, 'put');
+export function createEntry(http: HttpClient, rootUrl: string, params: CreateEntry$Params, context?: HttpContext): Observable<StrictHttpResponse<Entry>> {
+  const rb = new RequestBuilder(rootUrl, createEntry.PATH, 'post');
   if (params) {
-    rb.path('entry_id', params.entry_id, {});
     rb.body(params.body, 'application/json');
   }
 
@@ -31,10 +35,9 @@ export function updateAccountingEntry(http: HttpClient, rootUrl: string, params:
   ).pipe(
     filter((r: any): r is HttpResponse<any> => r instanceof HttpResponse),
     map((r: HttpResponse<any>) => {
-      return r as StrictHttpResponse<{
-      }>;
+      return r as StrictHttpResponse<Entry>;
     })
   );
 }
 
-updateAccountingEntry.PATH = '/api/v1/accounting/entries/{entry_id}';
+createEntry.PATH = '/api/v1/accounting/entries';

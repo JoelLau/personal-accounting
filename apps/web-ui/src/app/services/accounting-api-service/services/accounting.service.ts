@@ -13,24 +13,21 @@ import { StrictHttpResponse } from '../strict-http-response';
 import { AccountStatus } from '../models/account-status';
 import { apiV1AccountingAccountsInfoGet } from '../fn/accounting/api-v-1-accounting-accounts-info-get';
 import { ApiV1AccountingAccountsInfoGet$Params } from '../fn/accounting/api-v-1-accounting-accounts-info-get';
-import { apiV1AccountingEntriesGet } from '../fn/accounting/api-v-1-accounting-entries-get';
-import { ApiV1AccountingEntriesGet$Params } from '../fn/accounting/api-v-1-accounting-entries-get';
 import { apiV1AccountingLedgerAccountsGet } from '../fn/accounting/api-v-1-accounting-ledger-accounts-get';
 import { ApiV1AccountingLedgerAccountsGet$Params } from '../fn/accounting/api-v-1-accounting-ledger-accounts-get';
 import { apiV1AccountingPostingsGet } from '../fn/accounting/api-v-1-accounting-postings-get';
 import { ApiV1AccountingPostingsGet$Params } from '../fn/accounting/api-v-1-accounting-postings-get';
-import { apiV1AccountingTransactionsGet } from '../fn/accounting/api-v-1-accounting-transactions-get';
-import { ApiV1AccountingTransactionsGet$Params } from '../fn/accounting/api-v-1-accounting-transactions-get';
-import { apiV1AccountingTransactionsPost } from '../fn/accounting/api-v-1-accounting-transactions-post';
-import { ApiV1AccountingTransactionsPost$Params } from '../fn/accounting/api-v-1-accounting-transactions-post';
-import { apiV1AccountingTransactionsTransactionIdPut } from '../fn/accounting/api-v-1-accounting-transactions-transaction-id-put';
-import { ApiV1AccountingTransactionsTransactionIdPut$Params } from '../fn/accounting/api-v-1-accounting-transactions-transaction-id-put';
+import { createEntry } from '../fn/accounting/create-entry';
+import { CreateEntry$Params } from '../fn/accounting/create-entry';
+import { deleteEntry } from '../fn/accounting/delete-entry';
+import { DeleteEntry$Params } from '../fn/accounting/delete-entry';
 import { Entry } from '../models/entry';
+import { getEntries } from '../fn/accounting/get-entries';
+import { GetEntries$Params } from '../fn/accounting/get-entries';
 import { LedgerAccount } from '../models/ledger-account';
 import { Posting } from '../models/posting';
-import { Transaction } from '../models/transaction';
-import { updateAccountingEntry } from '../fn/accounting/update-accounting-entry';
-import { UpdateAccountingEntry$Params } from '../fn/accounting/update-accounting-entry';
+import { updateEntry } from '../fn/accounting/update-entry';
+import { UpdateEntry$Params } from '../fn/accounting/update-entry';
 
 @Injectable({ providedIn: 'root' })
 export class AccountingService extends BaseService {
@@ -124,8 +121,8 @@ export class AccountingService extends BaseService {
     );
   }
 
-  /** Path part for operation `apiV1AccountingEntriesGet()` */
-  static readonly ApiV1AccountingEntriesGetPath = '/api/v1/accounting/entries';
+  /** Path part for operation `getEntries()` */
+  static readonly GetEntriesPath = '/api/v1/accounting/entries';
 
   /**
    * List all entries.
@@ -133,14 +130,14 @@ export class AccountingService extends BaseService {
    *
    *
    * This method provides access to the full `HttpResponse`, allowing access to response headers.
-   * To access only the response body, use `apiV1AccountingEntriesGet()` instead.
+   * To access only the response body, use `getEntries()` instead.
    *
    * This method doesn't expect any request body.
    */
-  apiV1AccountingEntriesGet$Response(params?: ApiV1AccountingEntriesGet$Params, context?: HttpContext): Observable<StrictHttpResponse<{
+  getEntries$Response(params?: GetEntries$Params, context?: HttpContext): Observable<StrictHttpResponse<{
 'data'?: Array<Entry>;
 }>> {
-    const obs = apiV1AccountingEntriesGet(this.http, this.rootUrl, params, context);
+    const obs = getEntries(this.http, this.rootUrl, params, context);
     return obs;
   }
 
@@ -150,14 +147,14 @@ export class AccountingService extends BaseService {
    *
    *
    * This method provides access only to the response body.
-   * To access the full response (for headers, for example), `apiV1AccountingEntriesGet$Response()` instead.
+   * To access the full response (for headers, for example), `getEntries$Response()` instead.
    *
    * This method doesn't expect any request body.
    */
-  apiV1AccountingEntriesGet(params?: ApiV1AccountingEntriesGet$Params, context?: HttpContext): Observable<{
+  getEntries(params?: GetEntries$Params, context?: HttpContext): Observable<{
 'data'?: Array<Entry>;
 }> {
-    const resp = this.apiV1AccountingEntriesGet$Response(params, context);
+    const resp = this.getEntries$Response(params, context);
     return resp.pipe(
       map((r: StrictHttpResponse<{
 'data'?: Array<Entry>;
@@ -167,38 +164,73 @@ export class AccountingService extends BaseService {
     );
   }
 
-  /** Path part for operation `updateAccountingEntry()` */
-  static readonly UpdateAccountingEntryPath = '/api/v1/accounting/entries/{entry_id}';
+  /** Path part for operation `createEntry()` */
+  static readonly CreateEntryPath = '/api/v1/accounting/entries';
 
   /**
-   * Partial update of a ledger entry.
+   * create entry.
    *
    *
    *
    * This method provides access to the full `HttpResponse`, allowing access to response headers.
-   * To access only the response body, use `updateAccountingEntry()` instead.
+   * To access only the response body, use `createEntry()` instead.
    *
    * This method sends `application/json` and handles request body of type `application/json`.
    */
-  updateAccountingEntry$Response(params: UpdateAccountingEntry$Params, context?: HttpContext): Observable<StrictHttpResponse<{
+  createEntry$Response(params: CreateEntry$Params, context?: HttpContext): Observable<StrictHttpResponse<Entry>> {
+    const obs = createEntry(this.http, this.rootUrl, params, context);
+    return obs;
+  }
+
+  /**
+   * create entry.
+   *
+   *
+   *
+   * This method provides access only to the response body.
+   * To access the full response (for headers, for example), `createEntry$Response()` instead.
+   *
+   * This method sends `application/json` and handles request body of type `application/json`.
+   */
+  createEntry(params: CreateEntry$Params, context?: HttpContext): Observable<Entry> {
+    const resp = this.createEntry$Response(params, context);
+    return resp.pipe(
+      map((r: StrictHttpResponse<Entry>): Entry => r.body)
+    );
+  }
+
+  /** Path part for operation `updateEntry()` */
+  static readonly UpdateEntryPath = '/api/v1/accounting/entries/{entry_id}';
+
+  /**
+   * replace of a ledger entry.
+   *
+   *
+   *
+   * This method provides access to the full `HttpResponse`, allowing access to response headers.
+   * To access only the response body, use `updateEntry()` instead.
+   *
+   * This method sends `application/json` and handles request body of type `application/json`.
+   */
+  updateEntry$Response(params: UpdateEntry$Params, context?: HttpContext): Observable<StrictHttpResponse<{
 }>> {
-    const obs = updateAccountingEntry(this.http, this.rootUrl, params, context);
+    const obs = updateEntry(this.http, this.rootUrl, params, context);
     return obs;
   }
 
   /**
-   * Partial update of a ledger entry.
+   * replace of a ledger entry.
    *
    *
    *
    * This method provides access only to the response body.
-   * To access the full response (for headers, for example), `updateAccountingEntry$Response()` instead.
+   * To access the full response (for headers, for example), `updateEntry$Response()` instead.
    *
    * This method sends `application/json` and handles request body of type `application/json`.
    */
-  updateAccountingEntry(params: UpdateAccountingEntry$Params, context?: HttpContext): Observable<{
+  updateEntry(params: UpdateEntry$Params, context?: HttpContext): Observable<{
 }> {
-    const resp = this.updateAccountingEntry$Response(params, context);
+    const resp = this.updateEntry$Response(params, context);
     return resp.pipe(
       map((r: StrictHttpResponse<{
 }>): {
@@ -206,116 +238,42 @@ export class AccountingService extends BaseService {
     );
   }
 
-  /** Path part for operation `apiV1AccountingTransactionsGet()` */
-  static readonly ApiV1AccountingTransactionsGetPath = '/api/v1/accounting/transactions';
+  /** Path part for operation `deleteEntry()` */
+  static readonly DeleteEntryPath = '/api/v1/accounting/entries/{entry_id}';
 
   /**
-   * List all transactions.
+   * delete ledger entry.
    *
    *
    *
    * This method provides access to the full `HttpResponse`, allowing access to response headers.
-   * To access only the response body, use `apiV1AccountingTransactionsGet()` instead.
+   * To access only the response body, use `deleteEntry()` instead.
    *
    * This method doesn't expect any request body.
    */
-  apiV1AccountingTransactionsGet$Response(params?: ApiV1AccountingTransactionsGet$Params, context?: HttpContext): Observable<StrictHttpResponse<{
-'data'?: Array<Transaction>;
+  deleteEntry$Response(params: DeleteEntry$Params, context?: HttpContext): Observable<StrictHttpResponse<{
 }>> {
-    const obs = apiV1AccountingTransactionsGet(this.http, this.rootUrl, params, context);
+    const obs = deleteEntry(this.http, this.rootUrl, params, context);
     return obs;
   }
 
   /**
-   * List all transactions.
+   * delete ledger entry.
    *
    *
    *
    * This method provides access only to the response body.
-   * To access the full response (for headers, for example), `apiV1AccountingTransactionsGet$Response()` instead.
+   * To access the full response (for headers, for example), `deleteEntry$Response()` instead.
    *
    * This method doesn't expect any request body.
    */
-  apiV1AccountingTransactionsGet(params?: ApiV1AccountingTransactionsGet$Params, context?: HttpContext): Observable<{
-'data'?: Array<Transaction>;
+  deleteEntry(params: DeleteEntry$Params, context?: HttpContext): Observable<{
 }> {
-    const resp = this.apiV1AccountingTransactionsGet$Response(params, context);
+    const resp = this.deleteEntry$Response(params, context);
     return resp.pipe(
       map((r: StrictHttpResponse<{
-'data'?: Array<Transaction>;
 }>): {
-'data'?: Array<Transaction>;
 } => r.body)
-    );
-  }
-
-  /** Path part for operation `apiV1AccountingTransactionsPost()` */
-  static readonly ApiV1AccountingTransactionsPostPath = '/api/v1/accounting/transactions';
-
-  /**
-   * Create transaction.
-   *
-   *
-   *
-   * This method provides access to the full `HttpResponse`, allowing access to response headers.
-   * To access only the response body, use `apiV1AccountingTransactionsPost()` instead.
-   *
-   * This method doesn't expect any request body.
-   */
-  apiV1AccountingTransactionsPost$Response(params?: ApiV1AccountingTransactionsPost$Params, context?: HttpContext): Observable<StrictHttpResponse<void>> {
-    const obs = apiV1AccountingTransactionsPost(this.http, this.rootUrl, params, context);
-    return obs;
-  }
-
-  /**
-   * Create transaction.
-   *
-   *
-   *
-   * This method provides access only to the response body.
-   * To access the full response (for headers, for example), `apiV1AccountingTransactionsPost$Response()` instead.
-   *
-   * This method doesn't expect any request body.
-   */
-  apiV1AccountingTransactionsPost(params?: ApiV1AccountingTransactionsPost$Params, context?: HttpContext): Observable<void> {
-    const resp = this.apiV1AccountingTransactionsPost$Response(params, context);
-    return resp.pipe(
-      map((r: StrictHttpResponse<void>): void => r.body)
-    );
-  }
-
-  /** Path part for operation `apiV1AccountingTransactionsTransactionIdPut()` */
-  static readonly ApiV1AccountingTransactionsTransactionIdPutPath = '/api/v1/accounting/transactions/{transaction_id}';
-
-  /**
-   * Update or finalize a generated transaction.
-   *
-   *
-   *
-   * This method provides access to the full `HttpResponse`, allowing access to response headers.
-   * To access only the response body, use `apiV1AccountingTransactionsTransactionIdPut()` instead.
-   *
-   * This method sends `application/json` and handles request body of type `application/json`.
-   */
-  apiV1AccountingTransactionsTransactionIdPut$Response(params: ApiV1AccountingTransactionsTransactionIdPut$Params, context?: HttpContext): Observable<StrictHttpResponse<void>> {
-    const obs = apiV1AccountingTransactionsTransactionIdPut(this.http, this.rootUrl, params, context);
-    return obs;
-  }
-
-  /**
-   * Update or finalize a generated transaction.
-   *
-   *
-   *
-   * This method provides access only to the response body.
-   * To access the full response (for headers, for example), `apiV1AccountingTransactionsTransactionIdPut$Response()` instead.
-   *
-   * This method sends `application/json` and handles request body of type `application/json`.
-   */
-  apiV1AccountingTransactionsTransactionIdPut(params: ApiV1AccountingTransactionsTransactionIdPut$Params, context?: HttpContext): Observable<void> {
-    const resp = this.apiV1AccountingTransactionsTransactionIdPut$Response(params, context);
-    return resp.pipe(
-      map((r: StrictHttpResponse<void>): void => r.body)
     );
   }
 

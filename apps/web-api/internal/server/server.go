@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	dbgen "libs/ledger/infrastructure/database/gen"
-	"log/slog"
 	"strconv"
 	"strings"
 
@@ -18,6 +17,96 @@ import (
 // TODO: refactor - server handles queries and validation, add repo layer to handle persistence
 type Server struct {
 	pool *pgxpool.Pool
+}
+
+func (s *Server) GetApiV1AccountingAccountsInfo(ctx context.Context, request webapi.GetApiV1AccountingAccountsInfoRequestObject) (webapi.GetApiV1AccountingAccountsInfoResponseObject, error) {
+	panic("unimplemented")
+}
+
+func (s *Server) CreateEntry(ctx context.Context, request webapi.CreateEntryRequestObject) (webapi.CreateEntryResponseObject, error) {
+	// validation
+	if request.Body == nil {
+		return webapi.CreateEntry400JSONResponse{
+			Status: "400",
+			Title:  "Bad Request - invalid request body",
+		}, nil
+	}
+
+	body := *request.Body
+
+	postingsID, err := strconv.ParseInt(body.PostingsId, 10, 64)
+	if err != nil {
+		return webapi.CreateEntry400JSONResponse{
+			Status: "400",
+			Title:  "Bad Request - 'postings_id' must be numeric (e.g. \"72\")",
+		}, nil
+	}
+
+	ledgerAccountsId, err := strconv.ParseInt(body.LedgerAccountsId, 10, 64)
+	if err != nil {
+		return webapi.CreateEntry400JSONResponse{
+			Status: "400",
+			Title:  "Bad Request - 'ledger_accounts_id' must be numeric (e.g. \"72\")",
+		}, nil
+	}
+
+	debit, err := decimal.NewFromString(strings.TrimSpace(strings.ReplaceAll(body.DebitAmount, ",", "")))
+	if err != nil {
+		return webapi.CreateEntry400JSONResponse{
+			Status: "400",
+			Title:  fmt.Sprintf("Bad Request - debit_amount (%v) must be numeric (e.g. \"72.00\"): %v", body.DebitAmount, err),
+		}, nil
+	}
+
+	credit, err := decimal.NewFromString(strings.TrimSpace(strings.ReplaceAll(body.CreditAmount, ",", "")))
+	if err != nil {
+		return webapi.CreateEntry400JSONResponse{
+			Status: "400",
+			Title:  fmt.Sprintf("Bad Request - credit_amount (%v) must be numeric (e.g. \"72.00\"): %v", body.CreditAmount, err),
+		}, nil
+	}
+
+	entry, err := s.querier().CreateEntry(ctx, dbgen.CreateEntryParams{
+		Description:      pgtype.Text{String: body.Description, Valid: true},
+		SystemNotes:      pgtype.Text{String: "", Valid: false},
+		PostingsID:       postingsID,
+		LedgerAccountsID: ledgerAccountsId,
+		DebitMicrosgd:    debit.Mul(mil).IntPart(),
+		CreditMicrosgd:   credit.Mul(mil).IntPart(),
+	})
+	if err != nil {
+		err = fmt.Errorf("error persisting entry: %w", err)
+		return webapi.CreateEntry500JSONResponse{
+			Status: "500",
+			Title:  fmt.Sprintf("Internal Server Error - %v", err),
+		}, err
+	}
+
+	return webapi.CreateEntry201JSONResponse{
+		Id:          strconv.FormatInt(entry.ID, 10),
+		Description: entry.Description.String,
+	}, nil
+}
+
+func (s *Server) DeleteEntry(ctx context.Context, request webapi.DeleteEntryRequestObject) (webapi.DeleteEntryResponseObject, error) {
+	entryId, err := strconv.ParseInt(request.EntryId, 10, 64)
+	if err != nil {
+		return webapi.DeleteEntry400JSONResponse{
+			Status: "400",
+			Title:  fmt.Sprintf("Bad Request - entry_id (%v) must be numeric (e.g. \"72.00\"): %v", request.EntryId, err),
+		}, nil
+	}
+
+	err = s.querier().DeleteEntry(ctx, entryId)
+	if err != nil {
+		err = fmt.Errorf("error persisting entry: %w", err)
+		return webapi.DeleteEntry500JSONResponse{
+			Status: "500",
+			Title:  fmt.Sprintf("Internal Server Error - %v", err),
+		}, err
+	}
+
+	return webapi.DeleteEntry200JSONResponse{}, nil
 }
 
 var _ webapi.StrictServerInterface = &Server{}
@@ -34,10 +123,13 @@ func (s *Server) querier() *dbgen.Queries {
 
 // List all entries
 // (GET /api/v1/accounting/entries)
-func (s *Server) GetApiV1AccountingEntries(ctx context.Context, request webapi.GetApiV1AccountingEntriesRequestObject) (webapi.GetApiV1AccountingEntriesResponseObject, error) {
+func (s *Server) GetEntries(ctx context.Context, request webapi.GetEntriesRequestObject) (webapi.GetEntriesResponseObject, error) {
 	accounts, err := s.querier().ListEntries(ctx)
 	if err != nil {
-		return nil, err
+		return webapi.GetEntries500JSONResponse{
+			Status: "500",
+			Title:  fmt.Sprintf("Internal Server Error - %v", err),
+		}, nil
 	}
 
 	data := make([]webapi.Entry, len(accounts))
@@ -56,7 +148,7 @@ func (s *Server) GetApiV1AccountingEntries(ctx context.Context, request webapi.G
 		}
 	}
 
-	return webapi.GetApiV1AccountingEntries200JSONResponse{Data: &data}, nil
+	return webapi.GetEntries200JSONResponse{Data: &data}, nil
 }
 
 // List all ledger accounts
@@ -111,12 +203,10 @@ func (s *Server) GetApiV1AccountingPostings(ctx context.Context, request webapi.
 var mil = decimal.NewFromInt(1_000_000)
 
 // (PUT /api/v1/accounting/entries/:entry_id)
-func (s *Server) UpdateAccountingEntry(ctx context.Context, request webapi.UpdateAccountingEntryRequestObject) (webapi.UpdateAccountingEntryResponseObject, error) {
-	slog.InfoContext(ctx, "/api/v1/accounting/entries/:entry_id", slog.Any("request", request))
-
+func (s *Server) UpdateEntry(ctx context.Context, request webapi.UpdateEntryRequestObject) (webapi.UpdateEntryResponseObject, error) {
 	// validation
 	if request.Body == nil {
-		return webapi.UpdateAccountingEntry400JSONResponse{
+		return webapi.UpdateEntry400JSONResponse{
 			Status: "400",
 			Title:  "Bad Request - invalid request body",
 		}, nil
@@ -125,7 +215,7 @@ func (s *Server) UpdateAccountingEntry(ctx context.Context, request webapi.Updat
 	body := *request.Body
 	entryID, err := strconv.ParseInt(request.EntryId, 10, 64)
 	if err != nil {
-		return webapi.UpdateAccountingEntry400JSONResponse{
+		return webapi.UpdateEntry400JSONResponse{
 			Status: "400",
 			Title:  "Bad Request - 'entry_id' must be numeric (e.g. \"72\")",
 		}, nil
@@ -133,14 +223,14 @@ func (s *Server) UpdateAccountingEntry(ctx context.Context, request webapi.Updat
 
 	ledgerAccountsId, err := strconv.ParseInt(body.LedgerAccountsId, 10, 64)
 	if err != nil {
-		return webapi.UpdateAccountingEntry400JSONResponse{
+		return webapi.UpdateEntry400JSONResponse{
 			Status: "400",
 			Title:  "Bad Request - 'ledger_accounts_id' must be numeric (e.g. \"72\")",
 		}, nil
 	}
 
 	if request.EntryId != body.Id {
-		return webapi.UpdateAccountingEntry400JSONResponse{
+		return webapi.UpdateEntry400JSONResponse{
 			Status: "400",
 			Title:  fmt.Sprintf("Bad Request - entry id in url ('%s') does not match entry id found in body ('%s')", request.EntryId, body.Id),
 		}, nil
@@ -148,7 +238,7 @@ func (s *Server) UpdateAccountingEntry(ctx context.Context, request webapi.Updat
 
 	debit, err := decimal.NewFromString(strings.TrimSpace(strings.ReplaceAll(body.DebitAmount, ",", "")))
 	if err != nil {
-		return webapi.UpdateAccountingEntry400JSONResponse{
+		return webapi.UpdateEntry400JSONResponse{
 			Status: "400",
 			Title:  fmt.Sprintf("Bad Request - debit_amount (%v) must be numeric (e.g. \"72.00\"): %v", body.DebitAmount, err),
 		}, nil
@@ -156,7 +246,7 @@ func (s *Server) UpdateAccountingEntry(ctx context.Context, request webapi.Updat
 
 	credit, err := decimal.NewFromString(strings.TrimSpace(strings.ReplaceAll(body.CreditAmount, ",", "")))
 	if err != nil {
-		return webapi.UpdateAccountingEntry400JSONResponse{
+		return webapi.UpdateEntry400JSONResponse{
 			Status: "400",
 			Title:  fmt.Sprintf("Bad Request - credit_amount (%v) must be numeric (e.g. \"72.00\"): %v", body.CreditAmount, err),
 		}, nil
@@ -174,31 +264,7 @@ func (s *Server) UpdateAccountingEntry(ctx context.Context, request webapi.Updat
 		return nil, fmt.Errorf("failed to update database 'entry' object: %w", err)
 	}
 
-	return webapi.UpdateAccountingEntry200JSONResponse{}, nil
-}
-
-// Balance and health check
-// (GET /api/v1/accounting/accounts/info)
-func (s *Server) GetApiV1AccountingAccountsInfo(ctx context.Context, request webapi.GetApiV1AccountingAccountsInfoRequestObject) (webapi.GetApiV1AccountingAccountsInfoResponseObject, error) {
-	return webapi.GetApiV1AccountingAccountsInfo200JSONResponse{}, nil
-}
-
-// List all transactions
-// (GET /api/v1/accounting/transactions)
-func (s *Server) GetApiV1AccountingTransactions(ctx context.Context, request webapi.GetApiV1AccountingTransactionsRequestObject) (webapi.GetApiV1AccountingTransactionsResponseObject, error) {
-	return webapi.GetApiV1AccountingTransactions200JSONResponse{}, nil
-}
-
-// Create transaction
-// (POST /api/v1/accounting/transactions)
-func (s *Server) PostApiV1AccountingTransactions(ctx context.Context, request webapi.PostApiV1AccountingTransactionsRequestObject) (webapi.PostApiV1AccountingTransactionsResponseObject, error) {
-	return webapi.PostApiV1AccountingTransactions201Response{}, nil
-}
-
-// Update or finalize a generated transaction
-// (PUT /api/v1/accounting/transactions/{transaction_id})
-func (s *Server) PutApiV1AccountingTransactionsTransactionId(ctx context.Context, request webapi.PutApiV1AccountingTransactionsTransactionIdRequestObject) (webapi.PutApiV1AccountingTransactionsTransactionIdResponseObject, error) {
-	return webapi.PutApiV1AccountingTransactionsTransactionId200Response{}, nil
+	return webapi.UpdateEntry200JSONResponse{}, nil
 }
 
 // (GET /livez)
@@ -208,6 +274,5 @@ func (s *Server) GetApiLivez(ctx context.Context, request webapi.GetApiLivezRequ
 
 // (GET /readyz)
 func (s *Server) GetApiReadyz(ctx context.Context, request webapi.GetApiReadyzRequestObject) (webapi.GetApiReadyzResponseObject, error) {
-	slog.InfoContext(ctx, "GetApiReadyz", slog.Any("request", request))
 	return webapi.GetApiReadyz200JSONResponse{}, nil
 }

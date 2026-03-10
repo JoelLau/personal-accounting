@@ -1,4 +1,3 @@
-import { UpdateAccountingEntry$Params } from '../services/accounting-api-service/functions';
 import { Entry } from '../services/accounting-api-service/models';
 
 export class FetchLedgerData {

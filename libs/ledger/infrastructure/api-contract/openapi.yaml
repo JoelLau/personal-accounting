@@ -70,6 +70,7 @@ paths:
   # TODO: add filters for IN posting_ids (comma separated)
   /api/v1/accounting/entries:
     get:
+      operationId: getEntries
       tags: [accounting]
       summary: List all entries
       responses:
@@ -84,12 +85,63 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/Entry"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      operationId: CreateEntry
+      tags: [accounting]
+      summary: create entry
+      requestBody:
+        description: create entry
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - description
+                - system_notes
+                - ledger_accounts_id
+                - postings_id
+                - debit_amount
+                - credit_amount
+              properties:
+                description: { type: string }
+                system_notes: { type: string }
+                ledger_accounts_id: { type: string }
+                postings_id: { type: string }
+                debit_amount: { type: string, format: decimal }
+                credit_amount: { type: string, format: decimal }
+      responses:
+        "201":
+          description: 201 Created - Success Response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Entry"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 
   /api/v1/accounting/entries/{entry_id}:
     put:
-      operationId: UpdateAccountingEntry
+      operationId: UpdateEntry
       tags: [accounting]
-      summary: Partial update of a ledger entry
+      summary: replace of a ledger entry
       parameters:
         - name: entry_id
           in: path
@@ -129,74 +181,43 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ErrorResponse'
-
-  /api/v1/accounting/transactions:
-    get:
+    delete:
+      operationId: DeleteEntry
       tags: [accounting]
-      summary: List all transactions
+      summary: delete ledger entry
       parameters:
-        - name: start_date
-          in: query
-          description: "Filter transactions from this date (inclusive). Format: YYYY-MM-DD"
-          required: false
+        - name: entry_id
+          in: path
+          required: true
           schema:
             type: string
-            format: date
-            example: "2026-01-01"
-        - name: end_date
-          in: query
-          description: "Filter transactions until this date (inclusive). Format: YYYY-MM-DD"
-          required: false
-          schema:
-            type: string
-            format: date
-            example: "2026-01-31"
       responses:
         "200":
-          description: 200 OK - Success Response
+          description: Entry updated successfully
           content:
             application/json:
               schema:
                 type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/Transaction"
-
-    post:
-      tags: [accounting]
-      summary: Create transaction
-      responses:
-        "201":
-          description: Created
-
-  /api/v1/accounting/transactions/{transaction_id}:
-    put:
-      summary: Update or finalize a generated transaction
-      tags: [accounting]
-      parameters:
-        - name: transaction_id
-          in: path
-          required: true
-          schema: { type: string, format: uuid }
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [date, description, entries]
-              properties:
-                date: { type: string, format: date }
-                description: { type: string, example: "Starbucks (Corrected)" }
-                entries:
-                  type: array
-                  minItems: 1
-                  items:
-                    $ref: "#/components/schemas/TransactionEntry"
-      responses:
-        "200":
-          description: Transaction updated successfully
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Entry not found
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Server Side Error
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ErrorResponse'
 
   /api/v1/accounting/accounts/info:
     get:
