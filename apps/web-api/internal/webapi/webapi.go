@@ -15,15 +15,15 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
-// AccountStatus defines model for AccountStatus.
-type AccountStatus struct {
-	AccountId   *openapi_types.UUID `json:"account_id,omitempty"`
-	AccountName *string             `json:"account_name,omitempty"`
-	Balance     *int                `json:"balance,omitempty"`
-
-	// IsBalanced False if the sum of all transaction legs for this account is inconsistent
-	IsBalanced *bool     `json:"is_balanced,omitempty"`
-	Warnings   *[]string `json:"warnings,omitempty"`
+// AccountBalanceNode defines model for AccountBalanceNode.
+type AccountBalanceNode struct {
+	Credit          string  `json:"credit"`
+	Debit           string  `json:"debit"`
+	LedgerAccountId string  `json:"ledger_account_id"`
+	Name            string  `json:"name"`
+	ParentId        *string `json:"parent_id"`
+	TotalCredit     string  `json:"total_credit"`
+	TotalDebit      string  `json:"total_debit"`
 }
 
 // Entry Double-entry accounting ledger entry
@@ -82,6 +82,12 @@ type CreateEntryJSONBody struct {
 	SystemNotes      string `json:"system_notes"`
 }
 
+// GetAccountBalancesParams defines parameters for GetAccountBalances.
+type GetAccountBalancesParams struct {
+	StartDate openapi_types.Date `form:"start_date" json:"start_date"`
+	EndDate   openapi_types.Date `form:"end_date" json:"end_date"`
+}
+
 // CreateEntryJSONRequestBody defines body for CreateEntry for application/json ContentType.
 type CreateEntryJSONRequestBody CreateEntryJSONBody
 
@@ -96,9 +102,6 @@ type ServerInterface interface {
 
 	// (GET /api/readyz)
 	GetApiReadyz(w http.ResponseWriter, r *http.Request)
-	// Balance and health check
-	// (GET /api/v1/accounting/accounts/info)
-	GetApiV1AccountingAccountsInfo(w http.ResponseWriter, r *http.Request)
 	// List all entries
 	// (GET /api/v1/accounting/entries)
 	GetEntries(w http.ResponseWriter, r *http.Request)
@@ -117,6 +120,9 @@ type ServerInterface interface {
 	// List all postings
 	// (GET /api/v1/accounting/postings)
 	GetApiV1AccountingPostings(w http.ResponseWriter, r *http.Request)
+	// Get account balances and tree roll-ups for a date range
+	// (GET /api/v1/accounting/reports/account_balances)
+	GetAccountBalances(w http.ResponseWriter, r *http.Request, params GetAccountBalancesParams)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -130,12 +136,6 @@ func (_ Unimplemented) GetApiLivez(w http.ResponseWriter, r *http.Request) {
 
 // (GET /api/readyz)
 func (_ Unimplemented) GetApiReadyz(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// Balance and health check
-// (GET /api/v1/accounting/accounts/info)
-func (_ Unimplemented) GetApiV1AccountingAccountsInfo(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -175,6 +175,12 @@ func (_ Unimplemented) GetApiV1AccountingPostings(w http.ResponseWriter, r *http
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// Get account balances and tree roll-ups for a date range
+// (GET /api/v1/accounting/reports/account_balances)
+func (_ Unimplemented) GetAccountBalances(w http.ResponseWriter, r *http.Request, params GetAccountBalancesParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // ServerInterfaceWrapper converts contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler            ServerInterface
@@ -203,20 +209,6 @@ func (siw *ServerInterfaceWrapper) GetApiReadyz(w http.ResponseWriter, r *http.R
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetApiReadyz(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// GetApiV1AccountingAccountsInfo operation middleware
-func (siw *ServerInterfaceWrapper) GetApiV1AccountingAccountsInfo(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetApiV1AccountingAccountsInfo(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -323,6 +315,55 @@ func (siw *ServerInterfaceWrapper) GetApiV1AccountingPostings(w http.ResponseWri
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetApiV1AccountingPostings(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAccountBalances operation middleware
+func (siw *ServerInterfaceWrapper) GetAccountBalances(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetAccountBalancesParams
+
+	// ------------- Required query parameter "start_date" -------------
+
+	if paramValue := r.URL.Query().Get("start_date"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "start_date"})
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "start_date", r.URL.Query(), &params.StartDate)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "start_date", Err: err})
+		return
+	}
+
+	// ------------- Required query parameter "end_date" -------------
+
+	if paramValue := r.URL.Query().Get("end_date"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "end_date"})
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "end_date", r.URL.Query(), &params.EndDate)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "end_date", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAccountBalances(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -452,9 +493,6 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/api/readyz", wrapper.GetApiReadyz)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/api/v1/accounting/accounts/info", wrapper.GetApiV1AccountingAccountsInfo)
-	})
-	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/accounting/entries", wrapper.GetEntries)
 	})
 	r.Group(func(r chi.Router) {
@@ -471,6 +509,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/accounting/postings", wrapper.GetApiV1AccountingPostings)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/accounting/reports/account_balances", wrapper.GetAccountBalances)
 	})
 
 	return r
@@ -506,22 +547,6 @@ type GetApiReadyz200JSONResponse struct {
 }
 
 func (response GetApiReadyz200JSONResponse) VisitGetApiReadyzResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type GetApiV1AccountingAccountsInfoRequestObject struct {
-}
-
-type GetApiV1AccountingAccountsInfoResponseObject interface {
-	VisitGetApiV1AccountingAccountsInfoResponse(w http.ResponseWriter) error
-}
-
-type GetApiV1AccountingAccountsInfo200JSONResponse []AccountStatus
-
-func (response GetApiV1AccountingAccountsInfo200JSONResponse) VisitGetApiV1AccountingAccountsInfoResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
@@ -715,6 +740,43 @@ func (response GetApiV1AccountingPostings200JSONResponse) VisitGetApiV1Accountin
 	return json.NewEncoder(w).Encode(response)
 }
 
+type GetAccountBalancesRequestObject struct {
+	Params GetAccountBalancesParams
+}
+
+type GetAccountBalancesResponseObject interface {
+	VisitGetAccountBalancesResponse(w http.ResponseWriter) error
+}
+
+type GetAccountBalances200JSONResponse struct {
+	Data *[]AccountBalanceNode `json:"data,omitempty"`
+}
+
+func (response GetAccountBalances200JSONResponse) VisitGetAccountBalancesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetAccountBalances400JSONResponse ErrorResponse
+
+func (response GetAccountBalances400JSONResponse) VisitGetAccountBalancesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetAccountBalances500JSONResponse ErrorResponse
+
+func (response GetAccountBalances500JSONResponse) VisitGetAccountBalancesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 
@@ -723,9 +785,6 @@ type StrictServerInterface interface {
 
 	// (GET /api/readyz)
 	GetApiReadyz(ctx context.Context, request GetApiReadyzRequestObject) (GetApiReadyzResponseObject, error)
-	// Balance and health check
-	// (GET /api/v1/accounting/accounts/info)
-	GetApiV1AccountingAccountsInfo(ctx context.Context, request GetApiV1AccountingAccountsInfoRequestObject) (GetApiV1AccountingAccountsInfoResponseObject, error)
 	// List all entries
 	// (GET /api/v1/accounting/entries)
 	GetEntries(ctx context.Context, request GetEntriesRequestObject) (GetEntriesResponseObject, error)
@@ -744,6 +803,9 @@ type StrictServerInterface interface {
 	// List all postings
 	// (GET /api/v1/accounting/postings)
 	GetApiV1AccountingPostings(ctx context.Context, request GetApiV1AccountingPostingsRequestObject) (GetApiV1AccountingPostingsResponseObject, error)
+	// Get account balances and tree roll-ups for a date range
+	// (GET /api/v1/accounting/reports/account_balances)
+	GetAccountBalances(ctx context.Context, request GetAccountBalancesRequestObject) (GetAccountBalancesResponseObject, error)
 }
 
 type StrictHandlerFunc = strictnethttp.StrictHTTPHandlerFunc
@@ -816,30 +878,6 @@ func (sh *strictHandler) GetApiReadyz(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetApiReadyzResponseObject); ok {
 		if err := validResponse.VisitGetApiReadyzResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// GetApiV1AccountingAccountsInfo operation middleware
-func (sh *strictHandler) GetApiV1AccountingAccountsInfo(w http.ResponseWriter, r *http.Request) {
-	var request GetApiV1AccountingAccountsInfoRequestObject
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetApiV1AccountingAccountsInfo(ctx, request.(GetApiV1AccountingAccountsInfoRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetApiV1AccountingAccountsInfo")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetApiV1AccountingAccountsInfoResponseObject); ok {
-		if err := validResponse.VisitGetApiV1AccountingAccountsInfoResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -1002,6 +1040,32 @@ func (sh *strictHandler) GetApiV1AccountingPostings(w http.ResponseWriter, r *ht
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetApiV1AccountingPostingsResponseObject); ok {
 		if err := validResponse.VisitGetApiV1AccountingPostingsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetAccountBalances operation middleware
+func (sh *strictHandler) GetAccountBalances(w http.ResponseWriter, r *http.Request, params GetAccountBalancesParams) {
+	var request GetAccountBalancesRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetAccountBalances(ctx, request.(GetAccountBalancesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetAccountBalances")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetAccountBalancesResponseObject); ok {
+		if err := validResponse.VisitGetAccountBalancesResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

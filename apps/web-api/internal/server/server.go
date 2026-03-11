@@ -19,8 +19,52 @@ type Server struct {
 	pool *pgxpool.Pool
 }
 
-func (s *Server) GetApiV1AccountingAccountsInfo(ctx context.Context, request webapi.GetApiV1AccountingAccountsInfoRequestObject) (webapi.GetApiV1AccountingAccountsInfoResponseObject, error) {
-	panic("unimplemented")
+var _ webapi.StrictServerInterface = &Server{}
+
+func NewServer(pool *pgxpool.Pool) *Server {
+	return &Server{
+		pool: pool,
+	}
+}
+
+func (s *Server) querier() *dbgen.Queries {
+	return dbgen.New(s.pool)
+}
+
+// GetApiV1AccountingReportsAccountBalances implements [webapi.StrictServerInterface].
+func (s *Server) GetAccountBalances(ctx context.Context, request webapi.GetAccountBalancesRequestObject) (webapi.GetAccountBalancesResponseObject, error) {
+	accountRollups, err := s.querier().GetMonthlyAccountRollup(ctx, dbgen.GetMonthlyAccountRollupParams{
+		StartDate: request.Params.StartDate.Time,
+		EndDate:   request.Params.EndDate.Time,
+	})
+	if err != nil {
+		return webapi.GetAccountBalances500JSONResponse{
+			Status: "500",
+			Title:  fmt.Sprintf("Internal Server Error - %v", err),
+		}, nil
+	}
+
+	data := make([]webapi.AccountBalanceNode, len(accountRollups))
+	for idx, rollup := range accountRollups {
+		var parentId *string = nil
+		if rollup.ParentID.Valid {
+			raw := strconv.FormatInt(rollup.ParentID.Int64, 10)
+			parentId = &raw
+		}
+
+		data[idx] = webapi.AccountBalanceNode{
+			LedgerAccountId: strconv.FormatInt(rollup.LedgerAccountID, 10),
+			ParentId:        parentId,
+			Name:            rollup.QualifiedName,
+			Credit:          decimal.NewFromInt(rollup.IndividualCreditMicrosgd).Div(mil).String(),
+			Debit:           decimal.NewFromInt(rollup.IndividualDebitMicrosgd).Div(mil).String(),
+			TotalCredit:     decimal.NewFromInt(rollup.RolledUpCreditMicrosgd).Div(mil).String(),
+			TotalDebit:      decimal.NewFromInt(rollup.RolledUpDebitMicrosgd).Div(mil).String(),
+		}
+	}
+	return webapi.GetAccountBalances200JSONResponse{
+		Data: &data,
+	}, nil
 }
 
 func (s *Server) CreateEntry(ctx context.Context, request webapi.CreateEntryRequestObject) (webapi.CreateEntryResponseObject, error) {
@@ -107,18 +151,6 @@ func (s *Server) DeleteEntry(ctx context.Context, request webapi.DeleteEntryRequ
 	}
 
 	return webapi.DeleteEntry200JSONResponse{}, nil
-}
-
-var _ webapi.StrictServerInterface = &Server{}
-
-func NewServer(pool *pgxpool.Pool) *Server {
-	return &Server{
-		pool: pool,
-	}
-}
-
-func (s *Server) querier() *dbgen.Queries {
-	return dbgen.New(s.pool)
 }
 
 // List all entries

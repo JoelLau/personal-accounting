@@ -1,1 +1,73 @@
-<p>account-report-page works!</p>
+<h1>Reports</h1>
+
+<form
+  [formGroup]="formGroup"
+  style="display: flex; flex-direction: column; gap: 1rem"
+>
+  <div style="display: flex">
+    <div>
+      <input
+        type="radio"
+        formControlName="transactionsType"
+        id="radio-all"
+        value="all"
+      />
+      <label for="radio-all">All</label>
+    </div>
+    <div>
+      <input
+        type="radio"
+        formControlName="transactionsType"
+        id="radio-expenses"
+        value="expenses"
+      />
+      <label for="radio-expenses">Expenses</label>
+    </div>
+  </div>
+  <div style="display: flex">
+    <div>
+      <button (click)="onPreviousButtonClick()">Previous</button>
+      <input type="month" id="month" formControlName="month" />
+      <button (click)="onNextButtonClick()">Next</button>
+    </div>
+  </div>
+  <div>
+    <input type="checkbox" id="hide-parents" formControlName="hideParents" />
+    <label for="hide-parents">Hide Parents</label>
+  </div>
+</form>
+
+<br />
+
+<table style="width: 90%" *ngIf="accounts$ | async as accounts; else loading">
+  <thead>
+    <tr>
+      <th style="text-align: left">Account</th>
+      <th style="text-align: right">Debit</th>
+      <th style="text-align: right">Credit</th>
+    </tr>
+  </thead>
+  <ng-container *ngFor="let account of accounts; trackBy: trackBalanceNode">
+    <ng-container
+      *ngIf="
+        account.parent_id !== null || !formGroup.controls.hideParents.value
+      "
+    >
+      <tbody>
+        <tr>
+          <td class="account" style="text-align: left">{{ account.name }}</td>
+          <td class="debit" style="text-align: right">
+            {{ account.total_debit | currency : ' ' }}
+          </td>
+          <td class="credit" style="text-align: right">
+            {{ account.total_credit | currency : ' ' }}
+          </td>
+        </tr>
+      </tbody>
+    </ng-container>
+  </ng-container>
+</table>
+
+<ng-template #loading>
+  <p>loading...</p>
+</ng-template>

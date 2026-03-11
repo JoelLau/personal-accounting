@@ -7,9 +7,16 @@ import {
   ReactiveFormsModule,
 } from '@angular/forms';
 import { Store } from '@ngxs/store';
-import { BehaviorSubject, combineLatest, map, startWith, take } from 'rxjs';
+import {
+  BehaviorSubject,
+  combineLatest,
+  map,
+  startWith,
+  switchMap,
+  take,
+} from 'rxjs';
 import { Entry, Posting } from '../../services/accounting-api-service/models';
-import { UpdateEntry } from '../../store/ledger.actions';
+import { FetchLedgerData, UpdateEntry } from '../../store/ledger.actions';
 import { LedgerState } from '../../store/ledger.state';
 import { AccountingService } from '../../services/accounting-api-service/services';
 
@@ -151,7 +158,10 @@ export class TransactionsPageComponentComponent {
   onDeleteButtonClick(entryId: string) {
     this.accounting
       .deleteEntry({ entry_id: entryId })
-      .pipe(take(1))
+      .pipe(
+        take(1),
+        switchMap(() => this.state.dispatch(new FetchLedgerData()))
+      )
       .subscribe((response) => {
         console.log(response);
       });
@@ -172,7 +182,10 @@ export class TransactionsPageComponentComponent {
 
     this.accounting
       .createEntry({ body: entry })
-      .pipe(take(1))
+      .pipe(
+        take(1),
+        switchMap(() => this.state.dispatch(new FetchLedgerData()))
+      )
       .subscribe((response) => {
         console.log(response);
       });

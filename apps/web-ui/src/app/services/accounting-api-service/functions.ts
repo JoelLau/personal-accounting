@@ -17,5 +17,5 @@ export type { UpdateEntry$Params as UpdateEntry$Params } from './fn/accounting/u
 export { updateEntry as updateEntry } from './fn/accounting/update-entry';
 export type { DeleteEntry$Params as DeleteEntry$Params } from './fn/accounting/delete-entry';
 export { deleteEntry as deleteEntry } from './fn/accounting/delete-entry';
-export type { ApiV1AccountingAccountsInfoGet$Params as ApiV1AccountingAccountsInfoGet$Params } from './fn/accounting/api-v-1-accounting-accounts-info-get';
-export { apiV1AccountingAccountsInfoGet as apiV1AccountingAccountsInfoGet } from './fn/accounting/api-v-1-accounting-accounts-info-get';
+export type { GetAccountBalances$Params as GetAccountBalances$Params } from './fn/accounting/get-account-balances';
+export { getAccountBalances as getAccountBalances } from './fn/accounting/get-account-balances';

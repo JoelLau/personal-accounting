@@ -81,7 +81,6 @@ export class LedgerState {
       entries: this.accounting.getEntries(),
     }).pipe(
       tap(({ accounts, postings, entries }) => {
-        console.log(entries);
         ctx.patchState({
           accounts: accounts.data?.reduce((prev, curr) => {
             prev[curr.id] = curr;

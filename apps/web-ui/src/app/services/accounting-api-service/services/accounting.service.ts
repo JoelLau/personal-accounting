@@ -10,9 +10,7 @@ import { BaseService } from '../base-service';
 import { ApiConfiguration } from '../api-configuration';
 import { StrictHttpResponse } from '../strict-http-response';
 
-import { AccountStatus } from '../models/account-status';
-import { apiV1AccountingAccountsInfoGet } from '../fn/accounting/api-v-1-accounting-accounts-info-get';
-import { ApiV1AccountingAccountsInfoGet$Params } from '../fn/accounting/api-v-1-accounting-accounts-info-get';
+import { AccountBalanceNode } from '../models/account-balance-node';
 import { apiV1AccountingLedgerAccountsGet } from '../fn/accounting/api-v-1-accounting-ledger-accounts-get';
 import { ApiV1AccountingLedgerAccountsGet$Params } from '../fn/accounting/api-v-1-accounting-ledger-accounts-get';
 import { apiV1AccountingPostingsGet } from '../fn/accounting/api-v-1-accounting-postings-get';
@@ -22,6 +20,8 @@ import { CreateEntry$Params } from '../fn/accounting/create-entry';
 import { deleteEntry } from '../fn/accounting/delete-entry';
 import { DeleteEntry$Params } from '../fn/accounting/delete-entry';
 import { Entry } from '../models/entry';
+import { getAccountBalances } from '../fn/accounting/get-account-balances';
+import { GetAccountBalances$Params } from '../fn/accounting/get-account-balances';
 import { getEntries } from '../fn/accounting/get-entries';
 import { GetEntries$Params } from '../fn/accounting/get-entries';
 import { LedgerAccount } from '../models/ledger-account';
@@ -277,38 +277,46 @@ export class AccountingService extends BaseService {
     );
   }
 
-  /** Path part for operation `apiV1AccountingAccountsInfoGet()` */
-  static readonly ApiV1AccountingAccountsInfoGetPath = '/api/v1/accounting/accounts/info';
+  /** Path part for operation `getAccountBalances()` */
+  static readonly GetAccountBalancesPath = '/api/v1/accounting/reports/account_balances';
 
   /**
-   * Balance and health check.
+   * Get account balances and tree roll-ups for a date range.
    *
-   *
+   * Returns the full chart of accounts with individual and aggregated (rolled-up) debit/credit totals for the specified period.
    *
    * This method provides access to the full `HttpResponse`, allowing access to response headers.
-   * To access only the response body, use `apiV1AccountingAccountsInfoGet()` instead.
+   * To access only the response body, use `getAccountBalances()` instead.
    *
    * This method doesn't expect any request body.
    */
-  apiV1AccountingAccountsInfoGet$Response(params?: ApiV1AccountingAccountsInfoGet$Params, context?: HttpContext): Observable<StrictHttpResponse<Array<AccountStatus>>> {
-    const obs = apiV1AccountingAccountsInfoGet(this.http, this.rootUrl, params, context);
+  getAccountBalances$Response(params: GetAccountBalances$Params, context?: HttpContext): Observable<StrictHttpResponse<{
+'data'?: Array<AccountBalanceNode>;
+}>> {
+    const obs = getAccountBalances(this.http, this.rootUrl, params, context);
     return obs;
   }
 
   /**
-   * Balance and health check.
+   * Get account balances and tree roll-ups for a date range.
    *
-   *
+   * Returns the full chart of accounts with individual and aggregated (rolled-up) debit/credit totals for the specified period.
    *
    * This method provides access only to the response body.
-   * To access the full response (for headers, for example), `apiV1AccountingAccountsInfoGet$Response()` instead.
+   * To access the full response (for headers, for example), `getAccountBalances$Response()` instead.
    *
    * This method doesn't expect any request body.
    */
-  apiV1AccountingAccountsInfoGet(params?: ApiV1AccountingAccountsInfoGet$Params, context?: HttpContext): Observable<Array<AccountStatus>> {
-    const resp = this.apiV1AccountingAccountsInfoGet$Response(params, context);
+  getAccountBalances(params: GetAccountBalances$Params, context?: HttpContext): Observable<{
+'data'?: Array<AccountBalanceNode>;
+}> {
+    const resp = this.getAccountBalances$Response(params, context);
     return resp.pipe(
-      map((r: StrictHttpResponse<Array<AccountStatus>>): Array<AccountStatus> => r.body)
+      map((r: StrictHttpResponse<{
+'data'?: Array<AccountBalanceNode>;
+}>): {
+'data'?: Array<AccountBalanceNode>;
+} => r.body)
     );
   }
 

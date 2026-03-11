@@ -90,7 +90,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
     post:
       operationId: CreateEntry
       tags: [accounting]
@@ -128,14 +128,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal Server Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/accounting/entries/{entry_id}:
     put:
@@ -153,7 +152,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Entry'
+              $ref: "#/components/schemas/Entry"
       responses:
         "200":
           description: Entry updated successfully
@@ -166,21 +165,21 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Entry not found
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/ErrorResponse'
+                  - $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Server Side Error
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/ErrorResponse'
+                  - $ref: "#/components/schemas/ErrorResponse"
     delete:
       operationId: DeleteEntry
       tags: [accounting]
@@ -203,36 +202,63 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Entry not found
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/ErrorResponse'
+                  - $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Server Side Error
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/ErrorResponse'
+                  - $ref: "#/components/schemas/ErrorResponse"
 
-  /api/v1/accounting/accounts/info:
+  /api/v1/accounting/reports/account_balances:
     get:
+      operationId: getAccountBalances
       tags: [accounting]
-      summary: Balance and health check
+      summary: Get account balances and tree roll-ups for a date range
+      description: Returns the full chart of accounts with individual and aggregated (rolled-up) debit/credit totals for the specified period.
+      parameters:
+        - name: start_date
+          in: query
+          required: true
+          schema: { type: string, format: date }
+          example: "2024-01-01"
+        - name: end_date
+          in: query
+          required: true
+          schema: { type: string, format: date }
+          example: "2024-01-31"
       responses:
         "200":
-          description: ...
+          description: success
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/AccountStatus"
-
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AccountBalanceNode"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     LedgerAccount:
@@ -287,36 +313,24 @@ components:
         debit_amount: { type: string }
         credit_amount: { type: string }
 
-    Transaction:
+    AccountBalanceNode:
       type: object
-      description: Double-entry accounting transaction
-      required: [date, description, entries]
+      required:
+        - ledger_account_id
+        - parent_id
+        - name
+        - debit
+        - credit
+        - total_debit
+        - total_credit
       properties:
-        id: { type: string, format: uuid, readOnly: true }
-        date: { type: string, format: date }
-        description: { type: string }
-        entries:
-          type: array
-          items:
-            $ref: "#/components/schemas/TransactionEntry"
-
-    TransactionEntry:
-      description: Double-entry accounting entry - debit / credit
-      type: object
-      required: [transaction_id, debit_amount, credit_amount]
-      properties:
-        transaction_id:
-          type: string
-          format: string
-          description: transaction id
-        debit_amount:
-          type: string
-          format: number
-          description: ...
-        credit_amount:
-          type: string
-          format: number
-          description: ...
+        ledger_account_id: { type: string }
+        parent_id: {type: string, nullable: true }
+        name: { type: string }
+        debit: { type: string, format: decimal }
+        credit: { type: string, format: decimal }
+        total_debit: { type: string, format: decimal }
+        total_credit: { type: string, format: decimal }
 
     AccountStatus:
       type: object
