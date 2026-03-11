@@ -54,6 +54,8 @@ INSERT INTO ledger_accounts (id, name, description, parent_id) VALUES
 , (4601, 'Doctor', 'Healthcare and medical visits', 4600)
 , (4602, 'Education', 'Courses, books, and self-improvement', 4600)
 
+, (4999, 'Misc', 'miscellaneous', 4600)
+
 ;
 
 -- +goose StatementEnd

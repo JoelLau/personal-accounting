@@ -71,7 +71,7 @@ export class TransactionsPageComponentComponent {
           ...prev,
           {
             ...curr,
-            isExpanded: (rowState[curr.id] ?? { isExpanded: false }).isExpanded,
+            isExpanded: (rowState[curr.id] ?? { isExpanded: true }).isExpanded,
             entries: entries,
             debit: Object.values(entries).reduce((prev, curr) => {
               return prev + parseFloat(curr.debit_amount);
