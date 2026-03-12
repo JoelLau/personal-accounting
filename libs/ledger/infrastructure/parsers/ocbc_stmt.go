@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"libs/ledger/application/commands"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -17,10 +18,16 @@ const (
 	OCBCFullYearDateLayout = "2/1/2006"
 )
 
-type OcbcStatementCsvParser struct{}
+type OcbcStatementCsvParser struct {
+	YearFilter  int
+	MonthFilter int
+}
 
-func NewOcbcStatementCsvParser() *OcbcStatementCsvParser {
-	return &OcbcStatementCsvParser{}
+func NewOcbcStatementCsvParser(year int, month int) *OcbcStatementCsvParser {
+	return &OcbcStatementCsvParser{
+		YearFilter:  year,
+		MonthFilter: month,
+	}
 }
 
 func (p *OcbcStatementCsvParser) Parse(file io.Reader) ([]commands.RawTransaction, error) {
@@ -113,6 +120,12 @@ func (p *OcbcStatementCsvParser) extract(r io.Reader) ([]OcbcTransaction, error)
 				DepositsSGD:     depositsSgd,
 				RawRow:          strings.Join(append([]string{accountName}, record...), "|"),
 			}
+
+			if newTx.TransactionDate.Year() != p.YearFilter || newTx.TransactionDate.Month() != time.Month(p.MonthFilter) {
+				slog.Info("skipping..", slog.Any("dbs tx", newTx))
+				continue
+			}
+
 			transactions = append(transactions, newTx)
 
 		}

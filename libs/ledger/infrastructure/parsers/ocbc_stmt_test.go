@@ -59,7 +59,7 @@ GLAM (85) PTE LTD                 NETS QR PURCHASE   23034119",2.30,
 	file, err := os.Open(tempFile.Name())
 	require.NoError(t, err)
 
-	parser := parsers.NewOcbcStatementCsvParser()
+	parser := parsers.NewOcbcStatementCsvParser(2026, 01)
 
 	// Act
 	have, err := parser.Parse(file)

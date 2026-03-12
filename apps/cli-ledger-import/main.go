@@ -16,8 +16,11 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
+	"github.com/urfave/cli"
+	"github.com/urfave/cli/v3"
 )
 
+// TODO: move this to config file or sth
 var AccountIDs = struct {
 	Assets                int64
 	ExpensesUncategorized int64 // "Expenses:Uncategorized"
@@ -91,10 +94,10 @@ func setup() (Config, error) {
 	var profile commands.ImportProfile
 	switch *fileType {
 	case "dbs_cc":
-		parser = parsers.NewDbsCreditCardCsvParser()
+		parser = parsers.NewDbsCreditCardCsvParser(2026, 02) // TODO: move to CLI args / flag
 		profile = application.NewDBSImportProfile(AccountIDs.ExpensesUncategorized, AccountIDs.LiabilitiesCreditCard)
 	case "ocbc_stmt":
-		parser = parsers.NewOcbcStatementCsvParser()
+		parser = parsers.NewOcbcStatementCsvParser(2026, 02)
 		profile = application.NewOCBCStatementProfile(
 			AccountIDs.Assets,
 			AccountIDs.ExpensesUncategorized,
@@ -119,4 +122,8 @@ type Config struct {
 	FilePath    string
 	Parser      commands.TransactionFileParser
 	Profile     commands.ImportProfile
+}
+
+func NewCLICommand() *cli.Command {
+	return &cli.Command{}
 }

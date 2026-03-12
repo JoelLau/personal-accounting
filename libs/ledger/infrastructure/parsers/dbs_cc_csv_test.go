@@ -36,6 +36,7 @@ func TestDbsCreditCardCsvParser(t *testing.T) {
 "DBS Credit Card Type 4419-4321-4321-4321","","","","","","",""
 "","","","","","","",""
 "Transaction Date","Transaction Posting Date","Transaction Description","Transaction Type","Payment Type","Transaction Status","Debit Amount","Credit Amount"
+"11 Feb 2026","23 Jan 2026","HOMIES BAKERY","PURCHASE","Contactless","Pending","1.60",""
 "22 Jan 2026","23 Jan 2026","KOREAN RESTAURANT SINGAPORE SG","PURCHASE","Contactless","Settled","16.35",""
 "22 Jan 2026","23 Jan 2026","[Refund] KOREAN R SINGAPORE SG","REFUNDS & CREDITS","Others","Settled","","16.35"`
 
@@ -68,7 +69,7 @@ func TestDbsCreditCardCsvParser(t *testing.T) {
 	file, err := os.Open(tempFile.Name())
 	require.NoError(t, err)
 
-	parser := parsers.NewDbsCreditCardCsvParser()
+	parser := parsers.NewDbsCreditCardCsvParser(2026, 01)
 
 	// Act
 	transactions, err := parser.Parse(file)

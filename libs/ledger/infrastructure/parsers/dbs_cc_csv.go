@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"libs/ledger/application/commands"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -14,10 +15,17 @@ import (
 
 const DBSDateLayout = "02 Jan 2006"
 
-type DbsCreditCardCsvParser struct{}
+type DbsCreditCardCsvParser struct {
+	YearFilter        int
+	MonthFilter       int
+	StatusSettledOnly bool
+}
 
-func NewDbsCreditCardCsvParser() *DbsCreditCardCsvParser {
-	return &DbsCreditCardCsvParser{}
+func NewDbsCreditCardCsvParser(year int, month int) *DbsCreditCardCsvParser {
+	return &DbsCreditCardCsvParser{
+		YearFilter:  year,
+		MonthFilter: month,
+	}
 }
 
 func (p *DbsCreditCardCsvParser) Parse(file io.Reader) ([]commands.RawTransaction, error) {
@@ -113,6 +121,17 @@ func (p *DbsCreditCardCsvParser) extract(r io.Reader) ([]DbsTransaction, error) 
 				CreditAmount: creditAmount,
 				RawRow:       strings.Join(append([]string{currCard}, record...), "|"),
 			}
+
+			if tx.Date.Year() != p.YearFilter || tx.Date.Month() != time.Month(p.MonthFilter) {
+				slog.Info("skipping..", slog.Any("dbs tx", tx))
+				continue
+			}
+
+			if p.StatusSettledOnly && !(strings.ToLower(strings.TrimSpace(tx.Status)) == "settled") {
+				slog.Info("skipping..", slog.Any("dbs tx", tx))
+				continue
+			}
+
 			transactions = append(transactions, tx)
 
 		}
@@ -122,9 +141,9 @@ func (p *DbsCreditCardCsvParser) extract(r io.Reader) ([]DbsTransaction, error) 
 }
 
 func (p *DbsCreditCardCsvParser) normalize(raw []DbsTransaction) []commands.RawTransaction {
-	transactions := make([]commands.RawTransaction, len(raw))
+	transactions := make([]commands.RawTransaction, 0, len(raw))
 
-	for idx, row := range raw {
+	for _, row := range raw {
 		var amount int64 = 0
 
 		if row.DebitAmount.Valid && row.DebitAmount.Decimal.GreaterThan(decimal.Zero) {
@@ -135,13 +154,13 @@ func (p *DbsCreditCardCsvParser) normalize(raw []DbsTransaction) []commands.RawT
 			amount = row.CreditAmount.Decimal.Mul(decimal.NewFromInt(-1_000_000)).IntPart()
 		}
 
-		transactions[idx] = commands.RawTransaction{
+		transactions = append(transactions, commands.RawTransaction{
 			ID:          row.RawRow,
 			SourceName:  row.CardName,
 			Date:        row.Date,
 			Description: row.Description,
 			Amount:      amount,
-		}
+		})
 	}
 	return transactions
 }

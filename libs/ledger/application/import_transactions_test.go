@@ -111,7 +111,7 @@ func TestImportTransactions(t *testing.T) {
 
 			cmd := commands.ImportTransactionsCommand{
 				Reader:  reader,
-				Parser:  parsers.NewDbsCreditCardCsvParser(),
+				Parser:  parsers.NewDbsCreditCardCsvParser(2026, 01),
 				Profile: application.NewDBSImportProfile(ExpensesAccountID, LiabilitiesAccountID),
 			}
 
