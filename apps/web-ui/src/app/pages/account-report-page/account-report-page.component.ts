@@ -45,7 +45,6 @@ const TAXI = 4502;
 const DOCTOR = 4601;
 const EDUCATION = 4602;
 
-
 @Component({
   selector: 'app-account-report-page',
   imports: [CommonModule, ReactiveFormsModule],
@@ -55,23 +54,29 @@ export class AccountReportPageComponent {
   private readonly accounting = inject(AccountingService);
 
   readonly budget: { [accountId: number]: number } = {
-    [EXPENSES]: 146_068,
+    [EXPENSES]: 138_368,
+    [FOOD]: 17_000,
+
+    // [INVESTMENT]: 100_000,
     [INSURANCE]: 22_000,
     [PARENTS]: 9_600,
-    [TAX]: 35_892,
+    [TAX]: 38_842,
     [PHONE]: 360,
+    [EDUCATION]: 10_150,
+    [DOCTOR]: 6_000,
+    // [CASH]: 1_200,
     [TRAIN]: 2_920,
     [TAXI]: 1_000,
-    [HOLIDAY]: 12_000,
+    [HOLIDAY]: 0,
     [EATINGOUT]: 14_000,
     [GROCERIES]: 3_000,
-    [SHOPPINGJ]: 5_000,
-    [SHOPPINGK]: 11_000,
+    [SHOPPINGK]: 8_000,
+    [SHOPPINGJ]: 4_000,
     [ENTERTAINMENT]: 500,
     [MAINTENANCE]: 5_000,
     [CLEANER]: 3_796,
-    [DOG]: 0,
-    [GIFTS]: 7_500,
+    [DOG]: 2_000,
+    [GIFTS]: 6_000,
   };
 
   formGroup = new FormGroup({
@@ -109,20 +114,22 @@ export class AccountReportPageComponent {
     ),
   }).pipe(
     map(({ report, transactionType }) => {
-      return (report ?? []).filter((node) => {
-        if (transactionType == 'all') {
-          return true;
-        }
+      return (report ?? [])
+        .filter((node) => {
+          if (transactionType == 'all') {
+            return true;
+          }
 
-        return node.name.toLocaleLowerCase().startsWith(transactionType);
-      }).map((node): ReportRow => {
-        return {
-          ...node,
-          account_id: parseInt(node.ledger_account_id),
-          total_credit_num: parseFloat(node.total_credit),
-          total_debit_num: parseFloat(node.total_debit)
-        }
-      });
+          return node.name.toLocaleLowerCase().startsWith(transactionType);
+        })
+        .map((node): ReportRow => {
+          return {
+            ...node,
+            account_id: parseInt(node.ledger_account_id),
+            total_credit_num: parseFloat(node.total_credit),
+            total_debit_num: parseFloat(node.total_debit),
+          };
+        });
     })
   );
 
@@ -158,7 +165,7 @@ export class AccountReportPageComponent {
 }
 
 interface ReportRow extends AccountBalanceNode {
-  account_id: number
-  total_debit_num: number
-  total_credit_num: number
+  account_id: number;
+  total_debit_num: number;
+  total_credit_num: number;
 }
