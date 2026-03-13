@@ -1,24 +1,40 @@
 <h1>Transactions</h1>
 
-<form [formGroup]="formGroup" style="display: flex">
+<form
+  *ngIf="accounts$ | async as accounts"
+  [formGroup]="formGroup"
+  style="display: flex; gap: 0.5rem"
+>
   <div>
-    <input
-      type="radio"
-      formControlName="transactionsType"
-      id="radio-all"
-      value="all"
-    />
-    <label for="radio-all">All</label>
+    <label for="category-filter">Category:&nbsp;</label>
+    <select formControlName="transactionsType" id="category-filter">
+      <option value="all">All</option>
+
+      <ng-container *ngFor="let account of accounts">
+        <option [value]="account.qualified_name.toLocaleLowerCase()">
+          {{ account.qualified_name }}
+        </option>
+      </ng-container>
+    </select>
   </div>
-  <div>
-    <input
-      type="radio"
-      formControlName="transactionsType"
-      id="radio-expenses"
-      value="expenses"
-    />
-    <label for="radio-expenses">Expenses</label>
-  </div>
+
+  <button (click)="formGroup.controls.transactionsType.setValue('all')">
+    All
+  </button>
+  <button
+    (click)="
+      formGroup.controls.transactionsType.setValue('expenses:uncategorized')
+    "
+  >
+    Expenses:Uncategorized
+  </button>
+  <button
+    (click)="
+      formGroup.controls.transactionsType.setValue('expenses:food:eating out')
+    "
+  >
+    Expenses:Food:Eating Out
+  </button>
 </form>
 
 <br />

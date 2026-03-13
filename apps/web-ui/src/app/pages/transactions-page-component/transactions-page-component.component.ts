@@ -45,9 +45,15 @@ export class TransactionsPageComponentComponent {
   );
 
   formGroup = new FormGroup({
-    transactionsType: new FormControl('expenses', { nonNullable: true }),
+    transactionsType: new FormControl('expenses:uncategorized', {
+      nonNullable: true,
+    }),
   });
 
+  // TODO: refactor for readability
+  // TODO: separate:
+  // 1. FILTERs (requires page state + column states)
+  // 2. SORTs   (requires column state)
   rows$ = combineLatest({
     accounts: this.accountsById$,
     rowState: this.rowState$,
@@ -64,7 +70,7 @@ export class TransactionsPageComponentComponent {
           }
           return accounts[entry.ledger_accounts_id].qualified_name
             .toLocaleLowerCase()
-            .startsWith(`${tab}:`);
+            .startsWith(`${tab}`);
         });
 
         return [
@@ -89,10 +95,16 @@ export class TransactionsPageComponentComponent {
           },
         ];
       }, [] as TableRow[]);
-    })
+    }),
+    map((rows) =>
+      rows.sort((a, b) => {
+        return b.transacted_at.localeCompare(a.transacted_at);
+      })
+    )
   );
 
   expandAll() {
+    // TODO: refactor for readability
     this._rowStates.next(
       Object.values(this.state.selectSnapshot(LedgerState.getPostings)).reduce(
         (prev, curr) => {
@@ -131,8 +143,7 @@ export class TransactionsPageComponentComponent {
   }
 
   toggleRow(posting_id: string) {
-    console.log(posting_id);
-
+    // TODO: refactor for readability
     this._rowStates.next({
       ...this._rowStates.value,
       [posting_id]: {
@@ -147,7 +158,8 @@ export class TransactionsPageComponentComponent {
   onEntryChange(entryId: string, field: keyof Entry, newValue: string) {
     const entry: Entry = {
       ...this.state.selectSnapshot(LedgerState.getEntries)[entryId],
-      [field]: `${newValue}`, // WARN: temporary workaround
+      // WARN: temporary workaround - we need to do some ledger_account tree node ancestry bs here
+      [field]: `${newValue}`,
     };
 
     this.state.dispatch(new UpdateEntry(entryId, entry)).subscribe(() => {
@@ -168,20 +180,21 @@ export class TransactionsPageComponentComponent {
   }
 
   onAddEntryButtonClick(postingId: string) {
-    const postingsById = this.state.selectSnapshot(LedgerState.getPostings);
-    const posting = postingsById[postingId];
-
-    const entry = {
-      credit_amount: '0',
-      debit_amount: '1.0',
-      description: posting.description,
-      postings_id: postingId,
-      ledger_accounts_id: '4000',
-      system_notes: posting.system_notes,
-    };
+    const posting = this.state.selectSnapshot(LedgerState.getPostings)[
+      postingId
+    ];
 
     this.accounting
-      .createEntry({ body: entry })
+      .createEntry({
+        body: {
+          credit_amount: '0',
+          debit_amount: '1.0',
+          description: posting.description,
+          postings_id: posting.id,
+          ledger_accounts_id: '4000',
+          system_notes: posting.system_notes,
+        },
+      })
       .pipe(
         take(1),
         switchMap(() => this.state.dispatch(new FetchLedgerData()))

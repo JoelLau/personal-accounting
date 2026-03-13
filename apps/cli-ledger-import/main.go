@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"libs/ledger/application"
 	"libs/ledger/application/commands"
@@ -13,10 +12,10 @@ import (
 	"log/slog"
 	"os"
 	"packages/ingestion/parsers"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
-	"github.com/urfave/cli"
 	"github.com/urfave/cli/v3"
 )
 
@@ -35,95 +34,120 @@ var AccountIDs = struct {
 
 func main() {
 	ctx := context.Background()
-	cfg, err := setup()
-	if err != nil {
-		slog.ErrorContext(ctx, "failed to setup application", slog.Any("error", err))
-		os.Exit(1)
-	}
-	slog.SetDefault(cfg.Logger)
-
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{AddSource: true, Level: slog.LevelDebug})))
 	slog.InfoContext(ctx, "starting...")
 
-	pool, err := pgxpool.New(ctx, cfg.PostgresDSN)
-	if err != nil {
-		slog.ErrorContext(ctx, "failed to connect to postgres db", slog.Any("error", err))
+	cmd := NewCLICommand()
+	if err := cmd.Run(ctx, os.Args); err != nil {
+		slog.ErrorContext(ctx, "unexpected error", slog.Any("error", err))
 		os.Exit(1)
 	}
 
-	repo := database.NewRepository(pool)
-	service := services.NewImportTransactionsService(repo)
-	handler := handlers.NewImportTransactionsHandler(service)
-
-	file, err := os.Open(cfg.FilePath)
-	if err != nil {
-		slog.Error("failed to open file", slog.Any("filepath", cfg.FilePath), slog.Any("error", err))
-		os.Exit(1)
-	}
-	defer file.Close()
-
-	err = handler.Handle(ctx, commands.ImportTransactionsCommand{
-		Reader:  file,
-		Parser:  cfg.Parser,
-		Profile: cfg.Profile,
-	})
-	if err != nil {
-		slog.ErrorContext(ctx, "failed to ingest file", slog.Any("error", err))
-		os.Exit(1)
-	}
-
-	slog.InfoContext(ctx, "completed successfully")
+	slog.InfoContext(ctx, "closing...")
 }
 
-func setup() (Config, error) {
-	slogger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{AddSource: true, Level: slog.LevelDebug}))
-
-	err := godotenv.Load(".env")
-	if err != nil {
-		return Config{}, fmt.Errorf("failed to load environment variables, %w", err)
+var (
+	CLIFlagFileType = cli.StringFlag{
+		Name:     "file-type",
+		Required: true,
+		Usage:    "what type of file this is - 'dbs_cc' or 'ocbc_stmt'",
 	}
 
-	fileType := flag.String("filetype", "", "The bank type (dbs_cc or ocbc_stmt)")
-	flag.Parse()
-
-	if len(flag.Args()) < 1 {
-		return Config{}, errors.New("no filepath in args")
+	CLIFlagYearMonthFilter = cli.TimestampFlag{
+		Name:     "month-filter",
+		Required: true,
+		Usage:    "ONLY ingest files for listed month in yyyy-mm e.g. 2026-03",
+		Config: cli.TimestampConfig{
+			Timezone: time.UTC,
+			Layouts:  []string{"2006-01"},
+		},
 	}
-	filePath := flag.Args()[0]
-
-	var parser commands.TransactionFileParser
-	var profile commands.ImportProfile
-	switch *fileType {
-	case "dbs_cc":
-		parser = parsers.NewDbsCreditCardCsvParser(2026, 02) // TODO: move to CLI args / flag
-		profile = application.NewDBSImportProfile(AccountIDs.ExpensesUncategorized, AccountIDs.LiabilitiesCreditCard)
-	case "ocbc_stmt":
-		parser = parsers.NewOcbcStatementCsvParser(2026, 02)
-		profile = application.NewOCBCStatementProfile(
-			AccountIDs.Assets,
-			AccountIDs.ExpensesUncategorized,
-			AccountIDs.IncomeUncategorized,
-		)
-	default:
-		return Config{}, fmt.Errorf("invalid -filetype: '%s' (must be dbs_cc or ocbc_stmt)", *fileType)
-	}
-
-	return Config{
-		Logger:      slogger,
-		PostgresDSN: os.Getenv("DB_URL"),
-		FilePath:    filePath,
-		Parser:      parser,
-		Profile:     profile,
-	}, nil
-}
-
-type Config struct {
-	Logger      *slog.Logger
-	PostgresDSN string
-	FilePath    string
-	Parser      commands.TransactionFileParser
-	Profile     commands.ImportProfile
-}
+)
 
 func NewCLICommand() *cli.Command {
-	return &cli.Command{}
+	return &cli.Command{
+		Name:  "Ledger Import",
+		Usage: "imports bank transaction files to postgres database at env var DB_URL",
+		Flags: []cli.Flag{
+			&CLIFlagFileType,
+			&CLIFlagYearMonthFilter,
+		},
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			args, err := NewSuppliedArgs(cmd)
+			if err != nil {
+				return fmt.Errorf("argument error: %w", err)
+			}
+
+			pool, err := pgxpool.New(ctx, args.PostgresDSN)
+			if err != nil {
+				slog.ErrorContext(ctx, "failed to connect to postgres db", slog.Any("error", err))
+				os.Exit(1)
+			}
+
+			repo := database.NewRepository(pool)
+			service := services.NewImportTransactionsService(repo)
+			handler := handlers.NewImportTransactionsHandler(service)
+
+			file, err := os.Open(args.FilePath)
+			if err != nil {
+				slog.Error("failed to open file", slog.Any("filepath", args.FilePath), slog.Any("error", err))
+				os.Exit(1)
+			}
+			defer file.Close()
+
+			var parser commands.TransactionFileParser
+			var profile commands.ImportProfile
+			switch *&args.FileType {
+			case "dbs_cc":
+				parser = parsers.NewDbsCreditCardCsvParser(args.MonthFilter.Year(), int(args.MonthFilter.Month()))
+				profile = application.NewDBSImportProfile(AccountIDs.ExpensesUncategorized, AccountIDs.LiabilitiesCreditCard)
+			case "ocbc_stmt":
+				parser = parsers.NewOcbcStatementCsvParser(args.MonthFilter.Year(), int(args.MonthFilter.Month()))
+				profile = application.NewOCBCStatementProfile(
+					AccountIDs.Assets,
+					AccountIDs.ExpensesUncategorized,
+					AccountIDs.IncomeUncategorized,
+				)
+			default:
+				return fmt.Errorf("invalid file type: '%s' (must be dbs_cc or ocbc_stmt)", args.FileType)
+			}
+
+			err = handler.Handle(ctx, commands.ImportTransactionsCommand{
+				Reader:  file,
+				Parser:  parser,
+				Profile: profile,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to ingest file: %w", err)
+			}
+
+			return nil
+		},
+	}
+}
+
+type SuppliedArgs struct {
+	MonthFilter time.Time
+	FilePath    string
+	FileType    string // either "dbs_cc", "ocbc_stmt"
+	PostgresDSN string
+}
+
+func NewSuppliedArgs(cmd *cli.Command) (*SuppliedArgs, error) {
+	filePath := cmd.Args().First()
+	if filePath == "" {
+		return nil, errors.New("must supply path to file")
+	}
+
+	err := godotenv.Load()
+	if err != nil {
+		return nil, fmt.Errorf("error loading dotenv: %w", err)
+	}
+
+	return &SuppliedArgs{
+		MonthFilter: cmd.Timestamp(CLIFlagYearMonthFilter.Name),
+		FilePath:    filePath,
+		FileType:    cmd.String(CLIFlagFileType.Name),
+		PostgresDSN: os.Getenv("DB_URL"),
+	}, nil
 }
