@@ -34,7 +34,7 @@ var AccountIDs = struct {
 
 func main() {
 	ctx := context.Background()
-	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{AddSource: true, Level: slog.LevelDebug})))
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{AddSource: true, Level: slog.LevelError})))
 	slog.InfoContext(ctx, "starting...")
 
 	cmd := NewCLICommand()
@@ -97,7 +97,7 @@ func NewCLICommand() *cli.Command {
 
 			var parser commands.TransactionFileParser
 			var profile commands.ImportProfile
-			switch *&args.FileType {
+			switch args.FileType {
 			case "dbs_cc":
 				parser = parsers.NewDbsCreditCardCsvParser(args.MonthFilter.Year(), int(args.MonthFilter.Month()))
 				profile = application.NewDBSImportProfile(AccountIDs.ExpensesUncategorized, AccountIDs.LiabilitiesCreditCard)

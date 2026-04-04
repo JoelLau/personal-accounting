@@ -53,6 +53,7 @@ const EDUCATION = 4602;
 export class AccountReportPageComponent {
   private readonly accounting = inject(AccountingService);
 
+  // annual budget (12 months)
   readonly budget: { [accountId: number]: number } = {
     [EXPENSES]: 138_368,
     [FOOD]: 17_000,
@@ -61,22 +62,33 @@ export class AccountReportPageComponent {
     [INSURANCE]: 22_000,
     [PARENTS]: 9_600,
     [TAX]: 38_842,
-    [PHONE]: 360,
+    [OBLIGATIONS]: 22_000 + 9_600 + 38_842, // insurance + parents + tax
+
     [EDUCATION]: 10_150,
     [DOCTOR]: 6_000,
+    [HEALTHnGROWTH]: 10_150 + 6_000, // education + doctor
+
     // [CASH]: 1_200,
+    [TRANSPORT]: 2_920 + 1_000, // train + taxi
     [TRAIN]: 2_920,
     [TAXI]: 1_000,
-    [HOLIDAY]: 0,
+
     [EATINGOUT]: 14_000,
     [GROCERIES]: 3_000,
     [SHOPPINGK]: 8_000,
     [SHOPPINGJ]: 4_000,
+
     [ENTERTAINMENT]: 500,
+    [GIFTS]: 6_000,
+    [HANDBAGS]: 0,
+    [HOLIDAY]: 12_000,
+    [LIFESTYLE]: 500 + 6_000 + 0 + 12_000, // entertainment + gifts + handbags + holiday
+
     [MAINTENANCE]: 5_000,
     [CLEANER]: 3_796,
     [DOG]: 2_000,
-    [GIFTS]: 6_000,
+    [PHONE]: 360,
+    [HOME]: 5_000 + 3_796 + 2_000 + 360, // cleaner + dog + maintenance + phone
   };
 
   formGroup = new FormGroup({

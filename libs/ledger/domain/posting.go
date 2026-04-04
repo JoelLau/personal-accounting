@@ -39,7 +39,7 @@ func (p *Posting) DebitMicroSGD() int64 {
 func (p *Posting) CreditMicroSGD() int64 {
 	var credit int64 = 0
 	for _, e := range p.Entries {
-		credit += e.DebitMicroSGD
+		credit += e.CreditMicroSGD
 	}
 	return credit
 }

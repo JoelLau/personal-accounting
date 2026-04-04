@@ -98,7 +98,7 @@ export class TransactionsPageComponentComponent {
     }),
     map((rows) =>
       rows.sort((a, b) => {
-        return b.transacted_at.localeCompare(a.transacted_at);
+        return b.description.localeCompare(a.description);
       })
     )
   );
