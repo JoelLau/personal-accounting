@@ -1,0 +1,39 @@
+name: Deploy Sheets Sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/sheets-sync/**"
+
+jobs:
+  deploy:
+    name: Push to Google Apps Script
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install clasp and TypeScript
+        run: npm install -g @google/clasp typescript
+
+      - name: Authenticate clasp
+        # CLASP_CREDENTIALS = contents of ~/.clasprc.json after running `clasp login` locally
+        run: echo '${{ secrets.CLASP_CREDENTIALS }}' > ~/.clasprc.json
+
+      - name: Compile TypeScript
+        working-directory: apps/sheets-sync
+        run: tsc
+
+      # appsscript.json must live alongside the compiled JS in dist/
+      - name: Copy manifest to dist
+        working-directory: apps/sheets-sync
+        run: cp appsscript.json dist/appsscript.json
+
+      - name: Push to Apps Script
+        working-directory: apps/sheets-sync
+        run: clasp push --force
