@@ -5,11 +5,13 @@ on:
     branches: [main]
     paths:
       - "apps/sheets-sync/**"
+  workflow_dispatch:
 
 jobs:
   deploy:
     name: Push to Google Apps Script
     runs-on: ubuntu-latest
+    environment: sheets-sync  # requires approval — configure reviewers in repo Settings > Environments
 
     steps:
       - uses: actions/checkout@v4
