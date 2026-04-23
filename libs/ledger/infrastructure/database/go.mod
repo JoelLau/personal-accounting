@@ -4,7 +4,7 @@ go 1.26
 
 require (
 	github.com/google/go-cmp v0.7.0
-	github.com/jackc/pgx/v5 v5.8.0
+	github.com/jackc/pgx/v5 v5.9.2
 	github.com/stretchr/testify v1.11.1
 )
 
