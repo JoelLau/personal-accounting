@@ -4,7 +4,7 @@ go 1.26
 
 require (
 	github.com/go-chi/chi/v5 v5.2.4
-	github.com/jackc/pgx/v5 v5.8.0
+	github.com/jackc/pgx/v5 v5.9.2
 	github.com/joho/godotenv v1.5.1
 	github.com/oapi-codegen/runtime v1.1.2
 	github.com/shopspring/decimal v1.4.0
